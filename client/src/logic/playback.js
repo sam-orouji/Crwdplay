@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from "axios"; // stops you from writing "await fetch(endpoint)" and HTTP errors + .json to parse JSON
 
 export const fetchCurrentlyPlaying = async (token) => {
   if (!token) {

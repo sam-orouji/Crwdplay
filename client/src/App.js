@@ -11,7 +11,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/player" element={<Player />} />
+        <Route path="/player/:roomCode" element={<Player />} /> {/*fix route for roomCode ++ */}
         <Route path="*" element="Page not found"/>
       </Routes>
     </Router>

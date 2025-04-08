@@ -32,7 +32,7 @@ router.post("/store-session-and-token", async (req, res) => {
   }
 });
 
-// endpoint to remove session code & token 🔴
+// endpoint to remove session code & token 💰
 router.post("/remove-session-and-token", async (req, res) => {
   const { userId } = req.body;
   
@@ -49,14 +49,14 @@ router.post("/remove-session-and-token", async (req, res) => {
   }
 });
 
-// endpoint to get-token from sessionCode 🔴
+// endpoint to get-token from room code 🔴
 router.post("/get-token", async (req, res) => {
-  const { sessionCode } = req.body; // use sessioncode to get token bc unique session code for hosts attributes!!
+  const { roomCode } = req.body; // use roomCode to get token bc unique code for each host
 
-  if (!sessionCode) return res.status(400).json({ message: "Missing sessionCode" });
+  if (!roomCode) return res.status(400).json({ message: "Missing room code" });
 
   try {
-   await getToken(userId);
+   await getToken(roomCode);
    res.status(200).json({ message: "token retrieved successfully" });
   } catch (err) {
     console.error("Error retrieving token:", err);

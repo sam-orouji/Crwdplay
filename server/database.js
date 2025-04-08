@@ -54,20 +54,19 @@ export async function removeSessionCodeAndToken(userId) {
 }
 
 
-
-// get-token from session Code 🔴
-export async function getToken(userId) {
+// get token from room code 🔴
+export async function getToken(roomCode) {
   try {
     const db = client.db("Crowdplay");
     const users = db.collection("users");
 
-    // Find the user by their unique ID
-    const user = await usersCollection.findOne({ userId });
+    // Find the user by the unique room code generated for that host
+    const user = await users.findOne({ roomCode });
 
-    // Return the session code if it exists, otherwise return null
+    // Return the token if it exists, otherwise return null
     return user ? user.token : null;
   } catch (e) {
-    console.error("Error retrieving session code:", e);
+    console.error("Error retrieving token:", e);
     return null;
   }
 }
