@@ -6,8 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState} from "react";
 
 export default function Login() {
-    // initialize variables
-    const [roomCode, setRoomCode] = useState(null); // ** REMOVE THIS -- make player have route in it
+    const [inputCode, setInputCode] = useState("");
     const navigate = useNavigate();
 
     // extract token from URL after auth -- write in DB
@@ -40,6 +39,7 @@ export default function Login() {
           const userId = await genUserId(token);
           const code = genRoomCode();
           localStorage.setItem("userId", userId);
+          localStorage.setItem("roomCode", code); // ✅ bc state doesn't update in time to redirect to proper route IF user signed in
           
           // store token + userId + sessionCode in mongoDB
           await fetch("http://localhost:3001/api/store-session-and-token", {
@@ -52,7 +52,7 @@ export default function Login() {
           if (token) {
             // ** navigate is happening before I could update roomCodes state, bc this is INSIDE an async function 
             // ** so roomCode ISNT being sent to player
-            navigate(`/player/${code}`, {state: {token} }); // ** sends token into player
+            navigate(`/player/${code}`);
           }
         };
     
@@ -83,17 +83,48 @@ export default function Login() {
         // User already authenticated → navigate to the player (and send in roomCode bc GEN whenever this button is hit) **
         // token has ANOTHER navigate link bc the token is GRABBED from handleAuth function inside the hook above
         // AFTER this button it hit --> spotify oauth
-        const storedRoomCode = roomCode;
-        navigate('/player', { state: { roomCode: storedRoomCode } });
+        const storedRoomCode = localStorage.getItem("roomCode");
+        navigate(`/player/${storedRoomCode}`);
       } else {
         window.location.href = loginEndpoint;
       }
     }
 
+    // users entering session Code
+    const handleJoin = () => {
+      if (inputCode) {
+        navigate(`/player/${inputCode}`);
+      }
+    };  
+
    return(
       <>
         <h1 class="login-title">Join or Create a Session</h1>
         <button className="create-session-button" onClick={sessionHandler}>Create a Session 🎶</button>
+        <div class>
+        <input
+          type="text"
+          maxLength={10}
+          placeholder="Name"
+          // value={inputCode}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (/^\d{0,5}$/.test(value)) setInputCode(value);
+          }}
+        />
+        <input
+          type="text"
+          maxLength={5}
+          placeholder="Enter session code"
+          value={inputCode}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (/^\d{0,5}$/.test(value)) setInputCode(value);
+          }}
+        />
+        <button >Join Session</button> {/* onClick={handleJoinSession} */}
+        {/* {error && <p style={{ color: "red" }}>{error}</p>} */}
+        </div>
       </>
    );
    

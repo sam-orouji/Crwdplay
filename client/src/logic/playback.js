@@ -57,6 +57,32 @@ export const skipToNextTrack = async (token) => {
   }
 };
 
+// ✅ Function to skip back
+export const skipToPreviousTrack = async (token) => {
+  if (!token) {
+    console.error("No access token available.");
+    return;
+  }
+
+  try {
+    const response = await axios.post(
+      "https://api.spotify.com/v1/me/player/previous",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  } catch (error) {
+    console.error("⚠️ Error skipping song:", error.response?.data || error.message);
+  }
+};
+
+
 
 // ✅ Function to search for songs using Spotify API
 export const searchSongs = async (token, query) => {

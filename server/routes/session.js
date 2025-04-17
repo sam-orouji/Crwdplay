@@ -49,15 +49,24 @@ router.post("/remove-session-and-token", async (req, res) => {
   }
 });
 
-// endpoint to get-token from room code 🔴
+// endpoint to get-token from room code 💰
 router.post("/get-token", async (req, res) => {
-  const { roomCode } = req.body; // use roomCode to get token bc unique code for each host
+  const { roomCode } = req.body;
 
   if (!roomCode) return res.status(400).json({ message: "Missing room code" });
 
   try {
-   await getToken(roomCode);
-   res.status(200).json({ message: "token retrieved successfully" });
+    const token = await getToken(roomCode);
+    
+    // Debug what's being returned from getToken
+    console.log("Token found in database:", token);
+    
+    if (!token) {
+      return res.status(404).json({ message: "Token not found" });
+    }
+    
+    // Return the actual token value, not just a success message
+    res.status(200).json({ token });
   } catch (err) {
     console.error("Error retrieving token:", err);
     return res.status(500).json({ message: "Server error" });
