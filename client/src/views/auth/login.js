@@ -4,10 +4,13 @@ import "./login.css";
 import { loginEndpoint} from "./auth";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState} from "react";
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Login() {
-    const [inputCode, setInputCode] = useState("");
     const navigate = useNavigate();
+    const [inputCode, setInputCode] = useState(""); // "" to avoid annoying NPEs
+    const [name, setName] = useState("");
+    const [error, setError] = useState("");
 
     // extract token from URL after auth -- write in DB
     // wrote extractTokenFromUrl & handleAuth functions INSIDE the hook bc the scope only pertains to logging in
@@ -35,17 +38,17 @@ export default function Login() {
           const token = extractTokenFromUrl();
           if (!token) return;
         
-          // set userID in local storage (one variable to associate host with rest in the DB: token & session code)
-          const userId = await genUserId(token);
+          // set hostId in local storage (one variable to associate host with rest in the DB: token & session code)
+          const hostId = await genUserId(token);
           const code = genRoomCode();
-          localStorage.setItem("userId", userId);
+          localStorage.setItem("hostId", hostId);
           localStorage.setItem("roomCode", code); // ✅ bc state doesn't update in time to redirect to proper route IF user signed in
           
-          // store token + userId + sessionCode in mongoDB
+          // store token + hostId + sessionCode in mongoDB
           await fetch("http://localhost:3001/api/store-session-and-token", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, sessionCode: code, token })
+            body: JSON.stringify({ hostId, sessionCode: code, token })
           });
     
           // redirect now if token & everything is ready:
@@ -59,9 +62,9 @@ export default function Login() {
         handleAuth();
       }, []);
 
-    // generate a userID based off the token (sha256 hashing)
+    // generate a hostId based off the token (sha256 hashing)
     async function genUserId(token) {
-        if (!token) throw new Error("Token is required to generate userId");
+        if (!token) throw new Error("Token is required to generate hostId");
       
         const encoder = new TextEncoder();
         const data = encoder.encode(token);
@@ -71,6 +74,11 @@ export default function Login() {
         return hashHex;
       }
 
+    // gen guestId
+    function genGuestId() {
+      return `guest_${uuidv4()}`;
+    }
+
 
     function genRoomCode() {
         return Math.floor(10000 + Math.random() * 90000).toString();
@@ -78,8 +86,8 @@ export default function Login() {
 
     // session Handler - when clicking button redirect to spotify auth
     const sessionHandler = () => {
-      const userId = localStorage.getItem("userId");
-      if (userId) {
+      const hostId = localStorage.getItem("hostId");
+      if (hostId) {
         // User already authenticated → navigate to the player (and send in roomCode bc GEN whenever this button is hit) **
         // token has ANOTHER navigate link bc the token is GRABBED from handleAuth function inside the hook above
         // AFTER this button it hit --> spotify oauth
@@ -90,40 +98,113 @@ export default function Login() {
       }
     }
 
+
     // users entering session Code
-    const handleJoin = () => {
-      if (inputCode) {
-        navigate(`/player/${inputCode}`);
+    const handleJoinSession = async (inputCode) => {
+      // hosts CANT join other sessions
+      if (localStorage.getItem("hostId")) {
+        setError("Hosts cannot join other sessions.");
+        return;
       }
-    };  
+
+      if (localStorage.getItem("guestId")) {
+        setError("logged in guests cannot join multiple times.")
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:3001/api/validate-room-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomCode: inputCode })
+        });
+    
+        const data = await response.json();
+
+        if (!response.ok || !data.exists) {
+          throw new Error("Room code does NOT exist");
+        }
+
+        // gen guestId: write in DB and store in localstorage (so 1 person can't make multiple users)
+        const guestId = genGuestId();
+        localStorage.setItem("guestId", guestId);
+
+        // add name to DB ONLY if code exists
+        const writeName = await fetch("http://localhost:3001/api/update-guests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            roomCode: inputCode, 
+            guestId,
+            name
+          }) // ✅ CORRECT
+        })
+
+
+        console.log({ roomCode: inputCode, guestId, name });
+
+        if (!writeName.ok) {
+          throw new Error("Failed to add guest to the list");
+        }
+    
+        // FINALLY, If roomCode exists, redirect
+        navigate(`/player/${inputCode}`);
+      } catch (error) {
+        console.error("Error validating RoomCode:", error);
+        setError(error.message);
+      }
+    };
+    
+
 
    return(
       <>
         <h1 class="login-title">Join or Create a Session</h1>
         <button className="create-session-button" onClick={sessionHandler}>Create a Session 🎶</button>
         <div class>
-        <input
-          type="text"
-          maxLength={10}
-          placeholder="Name"
-          // value={inputCode}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (/^\d{0,5}$/.test(value)) setInputCode(value);
-          }}
-        />
-        <input
-          type="text"
-          maxLength={5}
-          placeholder="Enter session code"
-          value={inputCode}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (/^\d{0,5}$/.test(value)) setInputCode(value);
-          }}
-        />
-        <button >Join Session</button> {/* onClick={handleJoinSession} */}
-        {/* {error && <p style={{ color: "red" }}>{error}</p>} */}
+
+        <form onSubmit={(e) => {
+          e.preventDefault(); // prevent refresh, handle in react states + js
+
+          // hosts cant join other sessions
+          if (localStorage.getItem("hostId")) {
+            setError("Hosts cannot join other sessions.");
+            return;
+          }
+
+          if (!name || !inputCode) {
+            setError("Please fill out both fields");
+            return; // stops form from being submitted
+          }
+
+          handleJoinSession(inputCode); // use state value
+        }}>
+          <input
+            type="text"
+            placeholder="Enter your name"
+            value={name}
+            maxLength={12}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (/^[a-zA-Z]*$/.test(value)) setName(value);
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Enter session code"
+            value={inputCode}
+            maxLength={5}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (/^\d{0,5}$/.test(value)) setInputCode(value);
+            }}
+          />
+          <button type="submit">Join Session</button>
+          {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
+        </form>
+
+
+
         </div>
       </>
    );

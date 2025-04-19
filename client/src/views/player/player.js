@@ -158,13 +158,13 @@ export default function Player() {
 
     // logout event handler
     const handleLogout = async () => {
-        const userId = localStorage.getItem("userId");
+        const hostId = localStorage.getItem("hostId");
         localStorage.clear(); //regardless
-        // delete whole document associated with userID from DB
+        // delete whole document associated with hostId from DB
         await fetch("http://localhost:3001/api/remove-session-and-token", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId })
+            body: JSON.stringify({ hostId })
         });        
 
         window.location.href = "/";

@@ -1,30 +1,22 @@
 // routes related to storing the hosts roomCode
-// (Front end calls to database for: storing session codes, userIds, tokens)
+// (Front end calls to database for: storing session codes, hostIds, tokens)
 import express from "express";
 const router = express.Router();
-import { storeSessionCodeAndToken, removeSessionCodeAndToken, 
-         getToken } from "../database.js";
-// import { client } from "../database.js";
-
-// ++
-//i technically just make one endpoint that passes in (userId, token AND sessionCode) 
-// and just writes that all to one document, and then a remove that takes in userId and 
-// removes all and one for get() but get i would make indiivudal ones for token but i dont care ab getting sessionCode
+import { storeSessionCodeAndToken, updateGuests, removeSessionCodeAndToken, 
+         getToken, 
+         validateRoomCode} from "../database.js";
 
 
-// endpoint to store session code + token for userId 💰
+// endpoint to store session code + token for hostId 💰
 router.post("/store-session-and-token", async (req, res) => {
-  const { userId, sessionCode, token } = req.body;
-
-  console.log("🔥 /store-session-and-token route HIT");
-  console.log("Request body:", req.body);
+  const { hostId, sessionCode, token } = req.body;
   
-  if (!userId || !sessionCode || !token) {
-    return res.status(400).json({ error: "userId, sessionCode and token are required" });
+  if (!hostId || !sessionCode || !token) {
+    return res.status(400).json({ error: "hostId, sessionCode and token are required" });
   }
   
   try {
-    await storeSessionCodeAndToken(userId, sessionCode, token);
+    await storeSessionCodeAndToken(hostId, sessionCode, token);
     res.status(200).json({ message: "Session code and token stored successfully" });
   } catch (error) {
     console.error("Error storing session code and token:", error);
@@ -32,16 +24,51 @@ router.post("/store-session-and-token", async (req, res) => {
   }
 });
 
-// endpoint to remove session code & token 💰
-router.post("/remove-session-and-token", async (req, res) => {
-  const { userId } = req.body;
+// update guests who joined a hostId 🚧
+router.post("/update-guests", async (req, res) => {
+  const { roomCode, guestId, name } = req.body;
   
-  if (!userId) {
-    return res.status(400).json({ error: "userId is required" });
+  // Add debug logging to see what's being received
+  console.log("Request body received:", req.body);
+  
+  if (!roomCode || !guestId || !name) {
+    // Log which parameter is missing
+    console.log("Missing parameters:", {
+      roomCode: !roomCode,
+      guestId: !guestId,
+      name: !name
+    });
+    return res.status(400).json({ error: "Room code, guestId and name are required" });
   }
   
   try {
-    await removeSessionCodeAndToken(userId);
+    // Add debug logging
+    console.log("Updating guests with data:", { roomCode, guestId, name });
+    
+    const result = await updateGuests(roomCode, guestId, name);
+    
+    if (result.success) {
+      res.status(200).json({ message: "User stored in room code successfully" });
+    } else {
+      res.status(404).json({ error: result.message || "Failed to store user" });
+    }
+  } catch (error) {
+    console.error("Error storing user in roomCode:", error);
+    res.status(500).json({ error: "Failed to store user in roomCode" });
+  }
+});
+
+
+// endpoint to remove session code & token 💰
+router.post("/remove-session-and-token", async (req, res) => {
+  const { hostId } = req.body;
+  
+  if (!hostId) {
+    return res.status(400).json({ error: "hostId is required" });
+  }
+  
+  try {
+    await removeSessionCodeAndToken(hostId);
     res.status(200).json({ message: "Session code removed successfully" });
   } catch (error) {
     console.error("Error removing session code:", error);
@@ -58,9 +85,6 @@ router.post("/get-token", async (req, res) => {
   try {
     const token = await getToken(roomCode);
     
-    // Debug what's being returned from getToken
-    console.log("Token found in database:", token);
-    
     if (!token) {
       return res.status(404).json({ message: "Token not found" });
     }
@@ -72,6 +96,23 @@ router.post("/get-token", async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 });
+
+// endpoint to validate-roomCode 💰
+router.post("/validate-room-code", async (req, res) => {
+  const { roomCode } = req.body;
+
+  if (!roomCode) return res.status(400).json({ message: "Missing room code" });
+
+  try {
+    // return bool of what happens
+    const exists = await validateRoomCode(roomCode); // ← await is important
+    res.status(200).json({ exists });
+  } catch (err) {
+    console.error("Error validating roomCode:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 
 
