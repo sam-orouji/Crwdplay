@@ -1,4 +1,4 @@
-import { Link, useParams, useLocation } from "react-router-dom";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { fetchCurrentlyPlaying, skipToNextTrack, skipToPreviousTrack, searchSongs, queueSong, fetchUserProfile, fetchPlaybackState } from "../../logic/playback";
 import "./player.css";
@@ -9,6 +9,7 @@ export default function Player() {
     const params = useParams(); // hooks must be called UNconditionally **used to get roomCode from the URL
     const [token, setToken] = useState(null);  // not passing in token: getting from roomCode (for new tabs + other users)
     const roomCode = params.roomCode; // getting roomCode from URL
+    const navigate = useNavigate();
 
     const [nowPlaying, setNowPlaying] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -19,6 +20,14 @@ export default function Player() {
 
     // get token from URL (when opening new tabs + other users)
     const getTokenFromRoomCode = async (roomCode) => {
+      // ONLY for guests who verified through login, so name is stored/max users
+      const guestId = localStorage.getItem("guestId");
+      const hostId = localStorage.getItem("hostId");
+      const code = 1234;
+      if (!guestId && !hostId) {
+        navigate('/unauthorized'); // ** change later to a page that says, please authenticate --> and button to login
+      }
+
       try {
         const response = await fetch("http://localhost:3001/api/get-token", {
           method: "POST",
@@ -54,8 +63,10 @@ export default function Player() {
 
 
     const setUserProfilePicture = async () => {
-    
-        if (token) {
+        // only display for host
+        const hostId = localStorage.getItem("hostId");
+
+        if (token && hostId) {
           // Fetch profile picture
           const userProfile = await fetchUserProfile(token);
           if (userProfile && userProfile.profilePicture) {
