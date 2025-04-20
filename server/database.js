@@ -29,15 +29,15 @@ export async function storeSessionCodeAndToken(hostId, sessionCode, token) {
   }
 }
 
-// update guests that join a roomCode 🚧
+// Update guests who join a roomCode 💰
 export async function updateGuests(roomCode, guestId, name) {
   try {
     const db = client.db("Crowdplay");
     const usersCollection = db.collection("users");
     
-    console.log("Searching for document with sessionCode:", roomCode.toString());
+    console.log("Searching for document with sessionCode:", roomCode);
     
-    const existingDoc = await usersCollection.findOne({ sessionCode: roomCode.toString() });
+    const existingDoc = await usersCollection.findOne({ sessionCode: roomCode });
     console.log("Found document:", existingDoc);
     
     if (!existingDoc) {
@@ -45,21 +45,69 @@ export async function updateGuests(roomCode, guestId, name) {
       return { success: false, message: "Room code not found" };
     }
     
-    // Update using push to add a guest object with id and name
+    // Push a new guest object with ID and name into the guests array
     const result = await usersCollection.updateOne(
       { sessionCode: roomCode.toString() },
-      { $push: { guests: { id: guestId, name: name } } },
+      { $push: { guests: { id: guestId, name } } },
       { upsert: false }
     );
     
     console.log("Update result:", result);
-    console.log(`Guest ${guestId} added to room ${roomCode}: ${result.modifiedCount} document updated`);
+    console.log(`Guest ${guestId} added to room ${roomCode}: ${result.modifiedCount} document(s) updated`);
+    
     return { success: true };
   } catch (e) {
-    console.error("Error storing guest:", e);
+    console.error("Error updating guest:", e);
     return { success: false, error: e.message };
   }
 }
+
+// remove guest 💰
+export async function removeGuest(roomCode, guestId) {
+  try {
+    const db = client.db("Crowdplay");
+    const usersCollection = db.collection("users");
+
+    console.log(`Attempting to remove guest ${guestId} from room ${roomCode}`);
+
+    const result = await usersCollection.updateOne(
+      { sessionCode: roomCode.toString() },
+      { $pull: { guests: { id: guestId } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      console.warn(`No guest with ID ${guestId} found in room ${roomCode}`);
+      return { success: false, message: "Guest not found in room" };
+    }
+
+    console.log(`Guest ${guestId} removed from room ${roomCode}`);
+    return { success: true };
+  } catch (e) {
+    console.error("Error removing guest:", e);
+    return { success: false, error: e.message };
+  }
+}
+
+// get array of all guests in a session
+export async function getGuestNames(roomCode) {
+  try {
+    const db = client.db("Crowdplay");
+    const usersCollection = db.collection("users");
+
+    const session = await usersCollection.findOne({ sessionCode: roomCode });
+
+    if (!session || !session.guests) {
+      return [];
+    }
+
+    // Extract just the names
+    return session.guests.map(guest => guest.name);
+  } catch (e) {
+    console.error("Error fetching guest names:", e);
+    return [];
+  }
+}
+
 
 
 // remove user's session code & token (when user signs out delete document)  ** for longterm auth change this 💰

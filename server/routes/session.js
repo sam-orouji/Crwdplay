@@ -2,9 +2,8 @@
 // (Front end calls to database for: storing session codes, hostIds, tokens)
 import express from "express";
 const router = express.Router();
-import { storeSessionCodeAndToken, updateGuests, removeSessionCodeAndToken, 
-         getToken, 
-         validateRoomCode} from "../database.js";
+import { storeSessionCodeAndToken, updateGuests, removeGuest, removeSessionCodeAndToken, 
+         getToken, validateRoomCode, getGuestNames, } from "../database.js";
 
 
 // endpoint to store session code + token for hostId 💰
@@ -24,39 +23,78 @@ router.post("/store-session-and-token", async (req, res) => {
   }
 });
 
-// update guests who joined a hostId 🚧
+// add guests who join a session via hostId 💰
 router.post("/update-guests", async (req, res) => {
   const { roomCode, guestId, name } = req.body;
-  
-  // Add debug logging to see what's being received
+
   console.log("Request body received:", req.body);
-  
+
   if (!roomCode || !guestId || !name) {
-    // Log which parameter is missing
     console.log("Missing parameters:", {
       roomCode: !roomCode,
       guestId: !guestId,
       name: !name
     });
-    return res.status(400).json({ error: "Room code, guestId and name are required" });
+    return res.status(400).json({ error: "Room code, guestId, and name are required" });
   }
-  
+
   try {
-    // Add debug logging
     console.log("Updating guests with data:", { roomCode, guestId, name });
-    
+
     const result = await updateGuests(roomCode, guestId, name);
-    
+
     if (result.success) {
-      res.status(200).json({ message: "User stored in room code successfully" });
+      res.status(200).json({ message: "Guest added to session successfully" });
     } else {
-      res.status(404).json({ error: result.message || "Failed to store user" });
+      res.status(404).json({ error: result.message || "Failed to update guest list" });
     }
   } catch (error) {
-    console.error("Error storing user in roomCode:", error);
-    res.status(500).json({ error: "Failed to store user in roomCode" });
+    console.error("Server error while updating guest:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// remove guest 💰
+router.post("/remove-guest", async (req, res) => {
+  const { roomCode, guestId } = req.body;
+
+  console.log("Request to remove guest:", { roomCode, guestId });
+
+  if (!roomCode || !guestId) {
+    return res.status(400).json({ error: "roomCode and guestId are required" });
+  }
+
+  try {
+    const result = await removeGuest(roomCode, guestId);
+
+    if (result.success) {
+      return res.status(200).json({ message: "Guest removed successfully" });
+    } else {
+      return res.status(404).json({ error: result.message || "Failed to remove guest" });
+    }
+  } catch (error) {
+    console.error("Error in /remove-guest route:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// get all names of guests in an array
+router.post("/get-guest-names", async (req, res) => {
+  const { roomCode } = req.body;
+
+  if (!roomCode) {
+    return res.status(400).json({ error: "roomCode is required" });
+  }
+
+  try {
+    const names = await getGuestNames(roomCode);
+    res.status(200).json({ names });
+  } catch (error) {
+    console.error("Error in /get-guest-names:", error);
+    res.status(500).json({ error: "Failed to retrieve guest names" });
+  }
+});
+
 
 
 // endpoint to remove session code & token 💰

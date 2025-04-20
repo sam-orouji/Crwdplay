@@ -15,6 +15,7 @@ export default function Player() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [queuedMessage, setQueuedMessage] = useState("");
+    const [guestNames, setGuestNames] = useState([]); // ** change to object to fetch other things in future for AI rec logic or doing things to their accounts/playlist
 
     
 
@@ -164,13 +165,41 @@ export default function Player() {
     };
     
 
-    // bar displaying time
+    // guest in the session
+    useEffect(() => {
+      const fetchGuestNames = async () => {
+        try {
+          const roomCode = localStorage.getItem("roomCode");
+          const response = await fetch("http://localhost:3001/api/get-guest-names", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomCode })
+          });
+    
+          const data = await response.json();
+          console.log("Fetched guest names:", data.names);
+          setGuestNames(data.names || []);
+        } catch (err) {
+          console.error("Failed to fetch guest names:", err);
+        }
+      };
+    
+      fetchGuestNames();
+      const interval = setInterval(fetchGuestNames, 5000);
+      return () => clearInterval(interval);
+    }, []);
+    
+    
+
+
+
 
 
     // logout event handler
     const handleLogout = async () => {
         const hostId = localStorage.getItem("hostId");
-        localStorage.clear(); //regardless
+        const guestId = localStorage.getItem("guestId");
+        const roomCode = localStorage.getItem("roomCode");
         // delete whole document associated with hostId from DB
         await fetch("http://localhost:3001/api/remove-session-and-token", {
             method: "POST",
@@ -178,6 +207,14 @@ export default function Player() {
             body: JSON.stringify({ hostId })
         });        
 
+        // if guest logging out
+        await fetch("http://localhost:3001/api/remove-guest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomCode, guestId })
+        });
+
+        localStorage.clear(); //regardless
         window.location.href = "/";
     }
 
@@ -247,6 +284,15 @@ export default function Player() {
                 <p>{roomCode}</p>
               </div>
             )}
+        
+        <div>
+          <h3>Current Guests:</h3>
+          {guestNames.length === 0 ? (
+            <p>No guests yet...</p>
+          ) : (
+            guestNames.map((name, index) => <p key={index}>{name}</p>)
+          )}
+        </div>
         </>
     );
 }
