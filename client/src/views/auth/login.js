@@ -85,18 +85,27 @@ export default function Login() {
     }
 
     // session Handler - when clicking button redirect to spotify auth
-    const sessionHandler = () => {
-      const hostId = localStorage.getItem("hostId");
-      if (hostId) {
         // User already authenticated → navigate to the player (and send in roomCode bc GEN whenever this button is hit) **
         // token has ANOTHER navigate link bc the token is GRABBED from handleAuth function inside the hook above
         // AFTER this button it hit --> spotify oauth
-        const storedRoomCode = localStorage.getItem("roomCode");
+    const sessionHandler = () => {
+      const guestId = localStorage.getItem("guestId");
+      const hostId = localStorage.getItem("hostId");
+      const storedRoomCode = localStorage.getItem("roomCode");
+    
+      // 🔐 Guests should NOT be able to create new sessions
+      if (guestId) {
+        setError("Guests cannot create new sessions.");
+        navigate(`/player/${storedRoomCode}`);
+        return;
+      }
+    
+      if (hostId) {
         navigate(`/player/${storedRoomCode}`);
       } else {
         window.location.href = loginEndpoint;
       }
-    }
+    };
 
 
     // users entering session Code
@@ -104,11 +113,6 @@ export default function Login() {
       // hosts CANT join other sessions
       if (localStorage.getItem("hostId")) {
         setError("Hosts cannot join other sessions.");
-        return;
-      }
-
-      if (localStorage.getItem("guestId")) {
-        setError("logged in guests cannot join multiple times.")
         return;
       }
 
@@ -128,6 +132,7 @@ export default function Login() {
         // gen guestId: write in DB and store in localstorage (so 1 person can't make multiple users)
         const guestId = genGuestId();
         localStorage.setItem("guestId", guestId);
+        localStorage.setItem("roomCode", inputCode); // input code should be valid if we this far in the logic
 
         // add name to DB ONLY if code exists
         const writeName = await fetch("http://localhost:3001/api/update-guests", {
@@ -164,21 +169,33 @@ export default function Login() {
         <div class>
 
         <form onSubmit={(e) => {
-          e.preventDefault(); // prevent refresh, handle in react states + js
+        e.preventDefault();
 
-          // hosts cant join other sessions
-          if (localStorage.getItem("hostId")) {
-            setError("Hosts cannot join other sessions.");
-            return;
-          }
+        // 🔒 Hosts can't join other sessions
+        if (localStorage.getItem("hostId")) {
+          setError("Hosts cannot join other sessions.");
+          return;
+        }
 
-          if (!name || !inputCode) {
-            setError("Please fill out both fields");
-            return; // stops form from being submitted
-          }
+        // 🔒 Guests can't join new sessions
+        const guestId = localStorage.getItem("guestId");
+        if (guestId) {
+          setError("Logged in guests cannot join new sessions.");
+          const roomCode = localStorage.getItem("roomCode");
+          navigate(`/player/${roomCode}`);
+          return;
+        }
 
-          handleJoinSession(inputCode); // use state value
-        }}>
+        // 🧼 Validate form fields (only for new guests)
+        if (!name || !inputCode) {
+          setError("Please fill out both fields");
+          return;
+        }
+
+        handleJoinSession(inputCode);
+      }}>
+
+
           <input
             type="text"
             placeholder="Enter your name"
