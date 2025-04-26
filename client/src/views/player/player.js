@@ -17,6 +17,91 @@ export default function Player() {
     const [queuedMessage, setQueuedMessage] = useState("");
     const [guestNames, setGuestNames] = useState([]); // ** change to object to fetch other things in future for AI rec logic or doing things to their accounts/playlist
 
+
+    // voting logic
+    const [vote, setVote] = useState(true); // one vote & one queue only
+    const [queued, setQueued] = useState(true);
+    const [skip, setSkip] = useState(false);
+    const [songQueue, setSongQueue] = useState(() => {
+      // array initialized here, ++ create and set array to +1 when voting or queuing - vote edit value and add 1 
+      // Initialize from localStorage if it exists - if not return empty array
+      const storedQueue = localStorage.getItem('songQueue');
+      return storedQueue ? JSON.parse(storedQueue) : []; 
+    });
+    // update local storage everytime react variable updates, and stores in local storage (change to DB later) - page reload
+    useEffect(() => {
+      localStorage.setItem('songQueue', JSON.stringify(songQueue));
+    }, [songQueue]); // ++ check if i can pass in song title to queue/the format aligns properly when testing/passing into fxns
+    // Example songQueue structure: 
+        // [{ songId: "abc123", 
+        // title: "Song Name", 
+        // votes: 2 }, ...]
+
+
+    // getSongs: function to get top 5 songs in queue: display the album covers on screen with number of votes under (these 2 functions go hand in hand)
+    // poll this every 5 seconds
+    const getSongs = () => {
+      // for loop, for each display in a grid the album covers.
+      // make this a div in the return statement, but on each item put a handler {voteForSong} on top of the icon
+    }
+
+    // voteForSong: voting icon is the album covers -- populate top 5 songs. (polling is HTTP issue not API token -- research)
+    const voteForSong = (songId) => {
+      // only 1 vote -- binds
+      if (vote) {
+        return;
+        // put display message flash in middle of screen
+      }
+
+      // loop through song array, if find item we vote for 
+      // const newQueue = songQueue.map((s) => {
+      //   if (s.songId === songId) {
+      //     return { ...s, votes: s.votes + 1 };
+      //   }
+      //   return s;
+      // });
+    
+      // setSongQueue(newQueue);
+      // setVote(true);
+    }
+
+    // startVotePeriod: 15 seconds in song. (make sure song is longer than 15 lol) 
+    const startVotePeriod = () => {
+      // put display message onto screen, 
+      // change vote/queue to be true originally, once 15s hits turn both to false
+      // make sure all these functions run when song changes -- ** make hooks for them
+    }
+
+    const getSongLength = () => {
+      // get song length
+      // calculate the time in ms, 10 seconds before end
+      // return that value
+      // ** should these be async functions? no arg for these ik
+    }
+    const getWinningSong = () => {
+      // loop through songQueue array
+      // set a var called winner, if votes are higher it swaps (preserves older songs to become winners)
+      // queue winner 10 seconds before end, maybe swap to like 5
+      // reset voting/queue priveledge when new song hits
+    }
+
+  // skip ++ make huge button in center
+  const skipSong = async () => {
+    // skip only allowed during voting period
+    // reset skip to false after song ends -- hook
+    // this might j be easier to make a route for # of guests/a skip int you +1 if someone skips.
+      // skip if skips > guest / 2 (majority) -- NAH just make a variable for votes - array we update? or int possible? 
+                                              // -alr have array of guestNames, just do .size
+    if (!token) {
+      console.error("Missing token");
+      return;
+    }
+  
+    await skipToNextTrack(token);
+  };
+          
+
+
     
 
     // get token from URL (when opening new tabs + other users)
@@ -24,7 +109,6 @@ export default function Player() {
       // ONLY for guests who verified through login, so name is stored/max users
       const guestId = localStorage.getItem("guestId");
       const hostId = localStorage.getItem("hostId");
-      const code = 1234;
       if (!guestId && !hostId) {
         navigate('/unauthorized'); // ** change later to a page that says, please authenticate --> and button to login
       }
@@ -119,21 +203,9 @@ export default function Player() {
       }, 5000);
       return () => clearInterval(interval); // cleanup on unmount
     }, [token]);
-        
-
-
-    // skip
-    const skipSong = async () => {
-      if (!token) {
-        console.error("Missing token");
-        return;
-      }
-    
-      await skipToNextTrack(token);
-    };
     
 
-    // skip back
+    // skip back -- delete later ig
     const skipBack = async () => {
       if (!token) {
         console.error("Missing token");
@@ -143,27 +215,43 @@ export default function Player() {
       await skipToPreviousTrack(token);
     };
       
-    // search/queue song
+    // search/queue song 
     const handleSearchChange = async (event) => {
-      const query = event.target.value;
+      // only one queue per person -- until voting period ends ++
+
+      const query = event.target.value; // what user types
       setSearchQuery(query);
     
       if (query.length > 2) {
-        const results = await searchSongs(token, query);
+        const results = await searchSongs(token, query); // fxn
         setSearchResults(results);
       } else {
         setSearchResults([]);
       }
     };
 
-    // queue message
+    // queue message ++
     const handleQueueSong = async (trackId, trackName) => {
+      // one queue per guest
+      if (queued) {
+        setQueuedMessage("Can only queue one song per vote period!");
+        return;
+      }
+
       const trackUri = `spotify:track:${trackId}`;
       await queueSong(token, trackUri);
+
+      // voting logic ++ -- add queued song to list, with +1 vote
+      // const newQueue = [...songQueue, { songId: song.id, title: song.title, votes: 1 }];
+      // setSongQueue(newQueue);
+      // setQueued(true);
+
+      // display message
       setQueuedMessage(`🎵 Queued: ${trackName}`);
       setTimeout(() => setQueuedMessage(""), 3000);
     };
     
+
 
     // guest in the session
     useEffect(() => {
@@ -229,8 +317,7 @@ export default function Player() {
 
             <ul className="sidebar-links">
                 <li><Link to="/">🏠 Home</Link></li>
-                <li><Link to="/search">🔍 Search</Link></li>
-                <li><Link to="/settings">⚙️ Settings</Link></li>
+                <li><Link to="/voting">🗳️ Voting</Link></li>
             </ul>
         </nav>
         <Link to="/" onClick={handleLogout}>Log Out</Link>
