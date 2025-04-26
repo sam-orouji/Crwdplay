@@ -1,10 +1,12 @@
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { fetchCurrentlyPlaying, skipToNextTrack, skipToPreviousTrack, searchSongs, queueSong, fetchUserProfile, fetchPlaybackState } from "../../logic/playback";
+import { fetchCurrentlyPlaying, skipToNextTrack, skipToPreviousTrack, searchSongs, queueSong, 
+          fetchUserProfile, fetchPlaybackState } from "../../logic/playback"; // PLAYBACK/UI FUNCTIONS
+import {} from "../../logic/voting"; // VOTING FUNCTIONS 
 import "./player.css";
 
 export default function Player() {
-    // variables
+    // ---------------------- PLAYBACK/UI LOGIC ----------------------
     const location = useLocation();
     const params = useParams(); // hooks must be called UNconditionally **used to get roomCode from the URL
     const [token, setToken] = useState(null);  // not passing in token: getting from roomCode (for new tabs + other users)
@@ -18,7 +20,7 @@ export default function Player() {
     const [guestNames, setGuestNames] = useState([]); // ** change to object to fetch other things in future for AI rec logic or doing things to their accounts/playlist
 
 
-    // voting logic
+    // ---------------------- VOTING LOGIC ----------------------
     const [error, setError] = useState("");
     const [vote, setVote] = useState(false); // one vote & one queue only
     const [queued, setQueued] = useState(false); // did a user try to queue?
@@ -27,26 +29,28 @@ export default function Player() {
     const [songVotes, setSongVotes] = useState([]); // songId: "id1", votes: 2
     const [topFiveSongs, setTopFiveSongs] = useState([]); // songId: "id1", title: "getLucky", votes "3"
     const [lastTrackId, setLastTrackId] = useState(null); // trackId: to know when song changes
-    const [songQueue, setSongQueue] = useState(() => { // local var for state change + store in DB
+    const [songQueue, setSongQueue] = useState(() => { // local var for state change + store in DB ** route NOT local storage
       const storedQueue = localStorage.getItem('songQueue');
       return storedQueue ? JSON.parse(storedQueue) : []; // if DNE return empty array
     });
     
     // update local storage everytime react variable updates, and stores in local storage (change to DB later) - page reload
-    useEffect(() => {
-      localStorage.setItem('songQueue', JSON.stringify(songQueue));
-    }, [songQueue]); // updates localstorage everytime songQueue var updates
-  
-    // Example songQueue structure:  (pass in songId to functions for queueing)
+        // Example songQueue structure:  (pass in songId to functions for queueing)
         // [{ songId: "2Foc5Q5nqNiosCNqttzHof", 
         // title: "Get Lucky (Radio Edit) [feat. Pharrell Williams and Nile Rodgers]", 
         // votes: 0 }, ...]
-
+    useEffect(() => {
+      localStorage.setItem('songQueue', JSON.stringify(songQueue));
+    }, [songQueue]);
+  
 
 
     // getSongs: function to get top 5 songs in queue: display the album covers on screen with number of votes under
     // handler onClick = vote
     const getSongs = () => {
+      // call getQueue endpoint
+      // update topFiveSongs
+      // poll this every 5 seconds
     }
 
 
@@ -55,7 +59,7 @@ export default function Player() {
       // can't vote twice
     };
     // whenever song changes (song skips || song ends)
-        // auto reset votes, and queue WHIPE it
+        // auto reset votes, and WIPE queue
     useEffect(() => {
       const votesArray = songQueue.map((song) => ({
         songId: song.songId,
@@ -68,7 +72,7 @@ export default function Player() {
 
     
     
-    // queue songs
+    // queue songs ** not actually queing on account, vote queues/ real queue occurs in findWinner function
     const handleQueueSong = async (trackId, trackName) => {
       // one queue per guest
       if (queued) {
@@ -101,16 +105,59 @@ export default function Player() {
       }
     };
 
+    // current song playing ** when songs change LOGIC
+    // ** possibly store current playing song in a variable, when it doesn't match this, trigger things we need to do 
+      // --> update current song
+    const currentSong = async () => {
+      if (!token) {
+        console.error("Missing token");
+        return;
+      }
+    
+      const track = await fetchCurrentlyPlaying(token);
+    
+      if (!track) {
+        console.log("No song currently playing");
+        return;
+      }
+
+      const currentTrackId = track.id;
+
+      // when track changes ** 1. reset votes/queues/skips: setVote(false) + setQueued(false) + setSkip(false), 2. wipe top 5 songs
+    
+      setNowPlaying({
+        name: track.name,
+        artist: track.artist,
+        album: track.album,
+        cover: track.image
+      });
+    };
+
+    // calls currentSong when song is mounted + whenever SONG changes 
+    // ** currently working!! ** super important bc we alr know current song
+    useEffect(() => {
+      if (!token) return;
+
+      currentSong(); // Immediately fetch once on mount
+    
+      const interval = setInterval(() => { // start polling every 5 seconds
+        currentSong();
+      }, 5000);
+      return () => clearInterval(interval); // cleanup on unmount
+    }, [token]);
+
 
 
     const getWinningSong = () => {
       // loop through songQueue array in DB - GETQUEUE ROUTE
       // set a var called winner, if votes are higher it swaps (preserves older songs to become winners)
-      // call this when SONG CHANGES
+      // call this when SONG CHANGES ^^ hook right above
       // this ACTUALLY queues the winner, unlike handleQueue song adds to our queue in the DB
+      // REMOVE this songId from the queued list**
     }
 
-    // skip
+    // skip ** DONT actually skip. only skip if majority skipped
+    // 1. update total skips 2. compare to number of guests/majority if so, call await skipToNextTrack(token)
     const skipSong = async () => {
       // majority wins
       // ROUTE FOR GETUSERS. get length and GET integer of GETVOTES 
@@ -127,63 +174,17 @@ export default function Player() {
     
       await skipToNextTrack(token);
     };
-          
+    
+      
+    
 
-        // current song playing ** use for voting pictures / when songs change LOGIC
-        const currentSong = async () => {
-          if (!token) {
-            console.error("Missing token");
-            return;
-          }
-        
-          const track = await fetchCurrentlyPlaying(token);
-        
-          if (!track) {
-            console.log("No song currently playing");
-            return;
-          }
-    
-          const currentTrackId = track.id;
-    
-          // // Detect if track changed
-          // if (lastTrackId && lastTrackId !== currentTrackId) {
-          //   console.log("Detected song end! Removing first song from queue...");
-          //   songChange(); // remove top song from queue
-          //   setVote(false); // reset voting
-          //   setQueued(false); // reset queueing
-          //   setSkip(false); // reset skipping
-          //   setTopFiveSongs([]); // wipe top 5 songs
-          // }
-    
-          // setLastTrackId(currentTrackId); // Always update lastTrackId      
-        
-          setNowPlaying({
-            name: track.name,
-            artist: track.artist,
-            album: track.album,
-            cover: track.image
-          });
-        };
-        // // poll if song changes every 5 seconds ++
-        // useEffect(() => {
-        //   if (!token) return;
-        
-        //   currentSong(); // Fetch immediately
-        
-        //   const interval = setInterval(() => {
-        //     currentSong(); // Fetch every 5 sec
-        //   }, 5000);
-        
-        //   return () => clearInterval(interval);
-        // }, [token]);
 
     
 
 
+    
 
-
-
-
+    // ---------------------- PLAYBACK/UI LOGIC ----------------------
 
     // get token from URL (when opening new tabs + other users)
     const getTokenFromRoomCode = async (roomCode) => {
@@ -225,48 +226,6 @@ export default function Player() {
       }
     }, [token, roomCode]);
 
-    
-
-
-    const setUserProfilePicture = async () => {
-        // only display for host
-        const hostId = localStorage.getItem("hostId");
-
-        if (token && hostId) {
-          // Fetch profile picture
-          const userProfile = await fetchUserProfile(token);
-          if (userProfile && userProfile.profilePicture) {
-            
-            const profilePictureElement = document.getElementById('profile-picture');
-            profilePictureElement.src = userProfile.profilePicture;
-            profilePictureElement.style.display = 'block';
-          }
-        }
-      };
-      // make sure pfp displayed on mount & changes on refresh
-      useEffect(() => {
-        if (token) {
-          setUserProfilePicture();
-        }
-      }, [token]);
-
-    
-    
-    
-    
-    // calls currentSong when song is mounted + whenever SONG changes 
-    useEffect(() => {
-      if (!token) return;
-
-      currentSong(); // Immediately fetch once on mount
-    
-      const interval = setInterval(() => { // start polling every 5 seconds
-        currentSong();
-      }, 5000);
-      return () => clearInterval(interval); // cleanup on unmount
-    }, [token]);
-    
-      
     // search/queue song 
     const handleSearchChange = async (event) => {
       // only one queue per person -- until voting period ends ++
@@ -282,6 +241,28 @@ export default function Player() {
       }
     };
     
+    // profile pic
+    const setUserProfilePicture = async () => {
+      // only display for host
+      const hostId = localStorage.getItem("hostId");
+
+      if (token && hostId) {
+        // Fetch profile picture
+        const userProfile = await fetchUserProfile(token);
+        if (userProfile && userProfile.profilePicture) {
+          
+          const profilePictureElement = document.getElementById('profile-picture');
+          profilePictureElement.src = userProfile.profilePicture;
+          profilePictureElement.style.display = 'block';
+        }
+      }
+    };
+    // make sure pfp displayed on mount & changes on refresh
+    useEffect(() => {
+      if (token) {
+        setUserProfilePicture();
+      }
+    }, [token]);
 
 
     // guest in the session
@@ -309,11 +290,6 @@ export default function Player() {
     }, []);
     
     
-
-
-
-
-
     // logout event handler
     const handleLogout = async () => {
         const hostId = localStorage.getItem("hostId");
@@ -337,12 +313,9 @@ export default function Player() {
         window.location.href = "/";
     }
 
-    return (
-      <>
-        {/*error messages OR popups*/}
-        {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
 
-        
+    return (
+      <> 
         <nav className="sidebar">
             <div className="profile-pic">
               <img
@@ -378,6 +351,9 @@ export default function Player() {
           {/* voting screen */}
           <div className="bottom-panels">
             <div className="left-panel">
+              {/*error messages OR popups*/}
+              {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
+              
               <p>voting screen</p>
             </div>
 

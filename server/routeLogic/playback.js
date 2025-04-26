@@ -23,7 +23,7 @@ export async function storeSessionCodeAndToken(hostId, sessionCode, token) {
       { upsert: true } // Insert the document if it doesn't exist
     );
 
-    console.log(`Session code ${sessionCode} and ${token} stored for user ${hostId}`);
+    // console.log(`Session code ${sessionCode} and ${token} stored for user ${hostId}`);
   } catch (e) {
     console.error("Error storing session code and token:", e);
   }
@@ -35,10 +35,10 @@ export async function updateGuests(roomCode, guestId, name) {
     const db = client.db("Crowdplay");
     const usersCollection = db.collection("users");
     
-    console.log("Searching for document with sessionCode:", roomCode);
+    // console.log("Searching for document with sessionCode:", roomCode);
     
     const existingDoc = await usersCollection.findOne({ sessionCode: roomCode });
-    console.log("Found document:", existingDoc);
+    // console.log("Found document:", existingDoc);
     
     if (!existingDoc) {
       console.error(`No document found with sessionCode: ${roomCode}`);
@@ -52,8 +52,8 @@ export async function updateGuests(roomCode, guestId, name) {
       { upsert: false }
     );
     
-    console.log("Update result:", result);
-    console.log(`Guest ${guestId} added to room ${roomCode}: ${result.modifiedCount} document(s) updated`);
+    // console.log("Update result:", result);
+    // console.log(`Guest ${guestId} added to room ${roomCode}: ${result.modifiedCount} document(s) updated`);
     
     return { success: true };
   } catch (e) {
@@ -68,7 +68,7 @@ export async function removeGuest(roomCode, guestId) {
     const db = client.db("Crowdplay");
     const usersCollection = db.collection("users");
 
-    console.log(`Attempting to remove guest ${guestId} from room ${roomCode}`);
+    // console.log(`Attempting to remove guest ${guestId} from room ${roomCode}`);
 
     const result = await usersCollection.updateOne(
       { sessionCode: roomCode.toString() },
@@ -80,7 +80,7 @@ export async function removeGuest(roomCode, guestId) {
       return { success: false, message: "Guest not found in room" };
     }
 
-    console.log(`Guest ${guestId} removed from room ${roomCode}`);
+    // console.log(`Guest ${guestId} removed from room ${roomCode}`);
     return { success: true };
   } catch (e) {
     console.error("Error removing guest:", e);
@@ -120,7 +120,7 @@ export async function removeSessionCodeAndToken(hostId) {
     const result = await usersCollection.deleteOne({ hostId });
 
     if (result.deletedCount === 1) {
-      console.log(`🗑️ Successfully deleted user document for hostId: ${hostId}`);
+      // console.log(`🗑️ Successfully deleted user document for hostId: ${hostId}`);
       return { success: true };
     } else {
       console.warn(`⚠️ No document found for hostId: ${hostId}`);
@@ -143,7 +143,7 @@ export async function getToken(roomCode) {
     // Find the user by the unique room code
     const user = await users.findOne({ sessionCode: roomCode });
     
-    console.log("Found user:", user);
+    // console.log("Found user:", user);
     
     // Return the token if it exists, otherwise return null
     return user ? user.token : null;

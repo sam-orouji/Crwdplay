@@ -57,32 +57,6 @@ export const skipToNextTrack = async (token) => {
   }
 };
 
-// ✅ Function to skip back
-export const skipToPreviousTrack = async (token) => {
-  if (!token) {
-    console.error("No access token available.");
-    return;
-  }
-
-  try {
-    const response = await axios.post(
-      "https://api.spotify.com/v1/me/player/previous",
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  } catch (error) {
-    console.error("⚠️ Error skipping song:", error.response?.data || error.message);
-  }
-};
-
-
 
 // ✅ Function to search for songs using Spotify API
 export const searchSongs = async (token, query) => {
@@ -116,7 +90,7 @@ export const searchSongs = async (token, query) => {
 
 
 
-// ✅ Function to display duration of current song
+// ✅ Function to display duration of current song -- maybe use later
 export const durationOfSong = async (token) => {
   if (!token) {
     console.error("No access token available.");
@@ -207,7 +181,7 @@ export const fetchUserProfile = async (token) => {
   }
 };
 
-// fetch the current playback state
+// fetch the current playback state ** useful!
 export const fetchPlaybackState = async (token) => {
   if (!token) {
     console.error("No access token provided");

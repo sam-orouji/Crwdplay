@@ -2,8 +2,9 @@
 // entry point of backend - node index.js in server directory to run
 import express from "express";
 import cors from "cors";
-import sessionRoutes from "./routes/session.js";
-import { client } from "./database.js";
+import sessionRoutes from "./routes/sessionRoutes.js";
+import votingRoutes from "./routes/votingRoutes.js"
+import { client } from "./routeLogic/session.js"; // one time import
 
 // globally connect to the database once (don't connect/reconnect in each method)
 await client.connect(); 
@@ -17,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes call /api then route ex: localhost:3001/api/get-session
-app.use("/api", sessionRoutes); 
+app.use("/api", sessionRoutes, votingRoutes); 
 
 // Start server
 app.listen(PORT, () => {

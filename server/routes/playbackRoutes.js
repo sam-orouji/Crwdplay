@@ -3,7 +3,7 @@
 import express from "express";
 const router = express.Router();
 import { storeSessionCodeAndToken, updateGuests, removeGuest, removeSessionCodeAndToken, 
-         getToken, validateRoomCode, getGuestNames, } from "../database.js";
+         getToken, validateRoomCode, getGuestNames, } from "../routeLogic/playback.js";
 
 
 // endpoint to store session code + token for hostId 💰
@@ -27,19 +27,19 @@ router.post("/store-session-and-token", async (req, res) => {
 router.post("/update-guests", async (req, res) => {
   const { roomCode, guestId, name } = req.body;
 
-  console.log("Request body received:", req.body);
+  // console.log("Request body received:", req.body);
 
   if (!roomCode || !guestId || !name) {
-    console.log("Missing parameters:", {
-      roomCode: !roomCode,
-      guestId: !guestId,
-      name: !name
-    });
+    // console.log("Missing parameters:", {
+    //   roomCode: !roomCode,
+    //   guestId: !guestId,
+    //   name: !name
+    // });
     return res.status(400).json({ error: "Room code, guestId, and name are required" });
   }
 
   try {
-    console.log("Updating guests with data:", { roomCode, guestId, name });
+    // console.log("Updating guests with data:", { roomCode, guestId, name });
 
     const result = await updateGuests(roomCode, guestId, name);
 
@@ -58,7 +58,7 @@ router.post("/update-guests", async (req, res) => {
 router.post("/remove-guest", async (req, res) => {
   const { roomCode, guestId } = req.body;
 
-  console.log("Request to remove guest:", { roomCode, guestId });
+  // console.log("Request to remove guest:", { roomCode, guestId });
 
   if (!roomCode || !guestId) {
     return res.status(400).json({ error: "roomCode and guestId are required" });
