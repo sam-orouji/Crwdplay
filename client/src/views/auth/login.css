@@ -1,0 +1,107 @@
+/* put all content in one vertical box */
+.login-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /*center horizontally*/
+  margin-top: 50px;
+  font-family: 'Inter', sans-serif; /* new strong font */
+}
+
+.login-title {
+  margin: 50px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 2.5rem;
+  letter-spacing: -0.5px;
+  color: #111111;
+}
+
+.all-buttons {
+  background-color: #f0f0f0; /* soft modern light gray */
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  width: 400px;
+  height: 320px;
+  gap: 1rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.join-session-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.create-session-button {
+  background-color: #000000; /* clean strong black */
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.2rem;
+  padding: 0.75rem 2rem;
+  border: none;
+  margin-top: 20px;
+  width: 250px;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.3s ease;
+}
+
+.create-session-button:hover {
+  background-color: #333333;
+}
+
+.join-session-container {
+  width: 250px;
+}
+
+.join-session-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 250px;
+  gap: 1rem;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background-color: #fafafa;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: #333;
+}
+
+.input-field::placeholder {
+  color: #888888;
+}
+
+.join-session-button {
+  background-color: #000000; /* matching Create button */
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 10px;
+  width: 250px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.3s ease;
+}
+
+.join-session-button:hover {
+  background-color: #333333;
+}
+
+.error-message {
+  color: red;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}

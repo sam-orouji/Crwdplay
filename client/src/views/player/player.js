@@ -145,17 +145,17 @@ export default function Player() {
     
           const currentTrackId = track.id;
     
-          // Detect if track changed
-          if (lastTrackId && lastTrackId !== currentTrackId) {
-            console.log("Detected song end! Removing first song from queue...");
-            songChange(); // remove top song from queue
-            setVote(false); // reset voting
-            setQueued(false); // reset queueing
-            setSkip(false); // reset skipping
-            setTopFiveSongs([]); // wipe top 5 songs
-          }
+          // // Detect if track changed
+          // if (lastTrackId && lastTrackId !== currentTrackId) {
+          //   console.log("Detected song end! Removing first song from queue...");
+          //   songChange(); // remove top song from queue
+          //   setVote(false); // reset voting
+          //   setQueued(false); // reset queueing
+          //   setSkip(false); // reset skipping
+          //   setTopFiveSongs([]); // wipe top 5 songs
+          // }
     
-          setLastTrackId(currentTrackId); // Always update lastTrackId      
+          // setLastTrackId(currentTrackId); // Always update lastTrackId      
         
           setNowPlaying({
             name: track.name,
@@ -164,18 +164,18 @@ export default function Player() {
             cover: track.image
           });
         };
-        // poll if song changes every 5 seconds ++
-        useEffect(() => {
-          if (!token) return;
+        // // poll if song changes every 5 seconds ++
+        // useEffect(() => {
+        //   if (!token) return;
         
-          currentSong(); // Fetch immediately
+        //   currentSong(); // Fetch immediately
         
-          const interval = setInterval(() => {
-            currentSong(); // Fetch every 5 sec
-          }, 5000);
+        //   const interval = setInterval(() => {
+        //     currentSong(); // Fetch every 5 sec
+        //   }, 5000);
         
-          return () => clearInterval(interval);
-        }, [token]);
+        //   return () => clearInterval(interval);
+        // }, [token]);
 
     
 
@@ -338,99 +338,96 @@ export default function Player() {
     }
 
     return (
-        <>
+      <>
         {/*error messages OR popups*/}
         {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
 
-        {/*voting display*/}
-        <div className="votingDisplay">
-          {topFiveSongs.map((song, index) => (
-            <div key={song.songId} className="songCard" onClick={() => voteForSong(song.songId)}>
-            <div className="badge">
-              {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
-            </div>
-              <img src={song.songId.albumCoverUrl} alt="Album cover" className="albumImage" />
-              <div className="songInfo">
-                <div className="songTitle">{song.title}</div>
-                <div className="songVotes">{song.votes} votes</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         
-
-        <h1 className="player-text">Player page</h1>
-
         <nav className="sidebar">
             <div className="profile-pic">
-                {/* <img src={setUserProfilePicture} alt="Profile" /> */}
+              <img
+                id="profile-picture"
+                src=""
+                alt="Profile Picture"
+                style={{ display: 'none', borderRadius: '50%', width: '40px', height: '40px' }}
+              />
             </div>
 
             <ul className="sidebar-links">
                 <li><Link to="/">🏠 Home</Link></li>
                 <li><Link to="/voting">🗳️ Voting</Link></li>
+                <li><Link to="/" onClick={handleLogout}>Log Out</Link></li>
             </ul>
         </nav>
-        <Link to="/" onClick={handleLogout}>Log Out</Link>
+      
 
-        {nowPlaying && (
-        <div className="now-playing">
-            <img src={nowPlaying.cover} alt="Album cover" className="album-cover" />
-            <h2>{nowPlaying.name}</h2>
-            <p>{nowPlaying.artist} — <em>{nowPlaying.album}</em></p>
-        </div>
-        )}
-        <button onClick={skipSong} className="skip-forwards">⏭️ Skip Song</button>
-
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search for a song..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="search-input"
-          />
-
-          {searchResults.length > 0 && (
-            <ul className="search-results">
-              {searchResults.map((track) => (
-                <li key={track.id} onClick={() => handleQueueSong(track.id, track.name)}>
-                  <img src={track.image} alt={track.name} width="50" />
-                  <span>{track.name} — {track.artist}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {queuedMessage && <p className="queue-msg">{queuedMessage}</p>}
-        </div>
-
-        <div className="profile">
-            <img
-              id="profile-picture"
-              src=""
-              alt="Profile Picture"
-              style={{ display: 'none', borderRadius: '50%', width: '40px', height: '40px' }}
-            />
-        </div>
-
-        {/*fix getting roomCode from search URl*/}
-        {roomCode && (
-              <div className="session-code">
-                <h3>Your Session Code</h3>
-                <p>{roomCode}</p>
+        {/* when screen gets small: left on top of right */}
+        <div className="all-content">
+          {/* current song - main show*/}
+          <div className="top-panel">
+            {nowPlaying && (
+              <div className="now-playing">
+                  <img src={nowPlaying.cover} alt="Album cover" className="album-cover" />
+                  <h2>{nowPlaying.name}</h2>
+                  <p>{nowPlaying.artist} — <em>{nowPlaying.album}</em></p>
               </div>
             )}
-        
-        <div>
-          <h3>Current Guests:</h3>
-          {guestNames.length === 0 ? (
-            <p>No guests yet...</p>
-          ) : (
-            guestNames.map((name, index) => <p key={index}>{name}</p>)
-          )}
-        </div>
-        </>
+          </div>
+
+
+          {/* voting screen */}
+          <div className="bottom-panels">
+            <div className="left-panel">
+              <p>voting screen</p>
+            </div>
+
+            {/* session code, guest names, search/queue songs */}
+            <div className="right-panel">
+              {roomCode && (
+                  <div className="session-code">
+                    <h3>Session Code</h3>
+                    <p>{roomCode}</p>
+                  </div>
+              )}
+
+              <div className="current-guests">
+                <h3>Guests:</h3>
+                {guestNames.length === 0 ? (
+                  <p>No guests yet...</p>
+                ) : (
+                  guestNames.map((name, index) => <p key={index}>{name}</p>)
+                )}
+              </div>
+
+              <div className="search-container">
+                <input
+                  type="text"
+                  placeholder="Search for a song..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="search-input"
+                />
+
+                {searchResults.length > 0 && (
+                  <ul className="search-results">
+                    {searchResults.map((track) => (
+                      <li key={track.id} onClick={() => handleQueueSong(track.id, track.name)}>
+                        <img src={track.image} alt={track.name} width="50" />
+                        <span>{track.name} — {track.artist}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {queuedMessage && <p className="queue-msg">{queuedMessage}</p>}
+              </div> {/* search container*/}
+                
+            </div> {/* left panel*/}
+          </div>
+
+
+        </div> {/* all content*/}
+
+      </>
     );
 }
