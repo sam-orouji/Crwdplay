@@ -13,11 +13,11 @@ export default function Player() {
     const roomCode = params.roomCode; // getting roomCode from URL
     const navigate = useNavigate();
 
-    const [nowPlaying, setNowPlaying] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [queuedMessage, setQueuedMessage] = useState("");
-    const [guestNames, setGuestNames] = useState([]); // ** change to object to fetch other things in future for AI rec logic or doing things to their accounts/playlist
+    const [guestNames, setGuestNames] = useState([]); // -- change to object to fetch other things in future for AI rec logic or doing things to their accounts/playlist
+    const [nowPlaying, setNowPlaying] = useState(null); // **song thats currently playing - polled every 5s
+    const [searchQuery, setSearchQuery] = useState(""); // **not queueing rn
 
 
     // ---------------------- VOTING LOGIC ----------------------
@@ -28,7 +28,7 @@ export default function Player() {
     const [skipCount, setSkipCount] = useState(0);
     const [songVotes, setSongVotes] = useState([]); // songId: "id1", votes: 2
     const [topFiveSongs, setTopFiveSongs] = useState([]); // songId: "id1", title: "getLucky", votes "3"
-    const [lastTrackId, setLastTrackId] = useState(null); // trackId: to know when song changes
+    // const [lastTrackId, setLastTrackId] = useState(null); // trackId: to know when song changes ** we alr have nowPlaying -- ++ j check when this changes
     const [songQueue, setSongQueue] = useState(() => { // local var for state change + store in DB ** route NOT local storage
       const storedQueue = localStorage.getItem('songQueue');
       return storedQueue ? JSON.parse(storedQueue) : []; // if DNE return empty array
@@ -44,70 +44,91 @@ export default function Player() {
     }, [songQueue]);
   
 
-
-    // getSongs: function to get top 5 songs in queue: display the album covers on screen with number of votes under
-    // handler onClick = vote
-    const getSongs = () => {
-      // call getQueue endpoint
-      // update topFiveSongs
-      // poll this every 5 seconds
-    }
-
-
-    // voteForSong: the handler mentioned above^^
-    const voteForSong = (songId) => {
-      // can't vote twice
-    };
-    // whenever song changes (song skips || song ends)
-        // auto reset votes, and WIPE queue
-    useEffect(() => {
-      const votesArray = songQueue.map((song) => ({
-        songId: song.songId,
-        votes: song.votes,
-      }));
-      setSongVotes(votesArray);
-    }, [songQueue]);
-
-    // whenever votes/queue changes --> update 5 songs (if not 5 populate them), update allocated votes
-
     
-    
+
+
+    // ---------- PHASE 1 ------ display queues (only 1 queue wins. voting period after song changes --> populate songs)
+
+
+    // 1. first focus
     // queue songs ** not actually queing on account, vote queues/ real queue occurs in findWinner function
+    // make sure trackID & name is passed into this when using search bar*** +++ how?
     const handleQueueSong = async (trackId, trackName) => {
-      // one queue per guest
-      if (queued) {
-        setQueuedMessage("Can only queue one song per vote period!");
-        return;
-      }
-
-      // Check if song is already in queue --> iterate the DB using a route for GETQUEUE
-
-      // queue logic
       try {
-        const trackUri = `spotify:track:${trackId}`;
-        // DONT actually queue if not in queue, add to array queue then getWinningSong actually queues
-        // await queueSong(token, trackUri); //backend api call
-
-        // Add queued song to songQueue state
+        const isHost = localStorage.getItem("hostId") !== null;
+        const userId = localStorage.getItem("userId");
+    
+        // 0. Check if user has already queued (via DB, not React state)
+        const votedRes = await fetch(`http://localhost:3001/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${userId}` : ""}`);
+        const votedData = await votedRes.json();
+    
+        if (votedData.queued) {
+          setQueuedMessage("You’ve already queued a song this round!");
+          setTimeout(() => setQueuedMessage(""), 3000);
+          return;
+        }
+    
+        // 1. Check if song is already in queue
+        const res = await fetch(`http://localhost:3001/api/is-song-in-queue?roomCode=${roomCode}&songId=${trackId}`);
+        const data = await res.json();
+    
+        if (data.exists) {
+          setQueuedMessage("Song is already in the queue!");
+          setTimeout(() => setQueuedMessage(""), 3000);
+          return;
+        }
+    
+        // 2. Add song to queue in DB
+        await fetch("http://localhost:3001/api/add-song-queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomCode,
+            songId: trackId,
+            name: trackName,
+            votes: 0,
+          }),
+        });
+    
+        // 3. Update user state in DB to mark as queued
+        await fetch("http://localhost:3001/api/set-user-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomCode,
+            isHost,
+            userId: isHost ? null : userId,
+            type: "queued",
+            value: true
+          }),
+        });
+    
+        // 4. Update local state (optional, for instant UI feedback)
         const newQueue = [...songQueue, { songId: trackId, title: trackName, votes: 0 }];
         setSongQueue(newQueue);
-
-        // Mark user as queued
         setQueued(true);
-
-        // display message
         setQueuedMessage(`🎵 Queued: ${trackName}`);
         setTimeout(() => setQueuedMessage(""), 3000);
+    
       } catch (error) {
         console.error("Error queueing song:", error);
         setQueuedMessage("Error queueing song. Please try again.");
         setTimeout(() => setQueuedMessage(""), 3000);
       }
     };
+    
 
-    // current song playing ** when songs change LOGIC
-    // ** possibly store current playing song in a variable, when it doesn't match this, trigger things we need to do 
-      // --> update current song
+
+    // getSongs: function to get top 5 songs in queue + GETS THE WINNER, so DONt NEED A SEPARATE FUNCTION: display the album covers on screen with number of votes under
+      // just run a for loop 5 times. O(5n) then arr[0] is winner
+    const getSongs = () => {
+      // call getQueue endpoint
+      // update topFiveSongs
+      // polled every 5 seconds
+    }
+
+
+    // current song playing -- important variable for resetting logic once songs change
     const currentSong = async () => {
       if (!token) {
         console.error("Missing token");
@@ -120,10 +141,6 @@ export default function Player() {
         console.log("No song currently playing");
         return;
       }
-
-      const currentTrackId = track.id;
-
-      // when track changes ** 1. reset votes/queues/skips: setVote(false) + setQueued(false) + setSkip(false), 2. wipe top 5 songs
     
       setNowPlaying({
         name: track.name,
@@ -133,30 +150,39 @@ export default function Player() {
       });
     };
 
-    // calls currentSong when song is mounted + whenever SONG changes 
-    // ** currently working!! ** super important bc we alr know current song
+    // POLLER: gets current song, top 5 voted songs, guest names, more to come (when mounted + every 5s) 
     useEffect(() => {
       if (!token) return;
 
       currentSong(); // Immediately fetch once on mount
     
-      const interval = setInterval(() => { // start polling every 5 seconds
+      const interval = setInterval(() => { // start polling every 5 seconds for every function needing repeated checking
         currentSong();
+        getSongs();  // ++ call get songs also
+        fetchGuestNames();
       }, 5000);
       return () => clearInterval(interval); // cleanup on unmount
     }, [token]);
 
 
 
-    const getWinningSong = () => {
-      // loop through songQueue array in DB - GETQUEUE ROUTE
-      // set a var called winner, if votes are higher it swaps (preserves older songs to become winners)
-      // call this when SONG CHANGES ^^ hook right above
-      // this ACTUALLY queues the winner, unlike handleQueue song adds to our queue in the DB
-      // REMOVE this songId from the queued list**
-    }
 
-    // skip ** DONT actually skip. only skip if majority skipped
+
+    // ---------- PHASE 2: VOTING/SKIPPING ----------
+    
+    // clicking on album cover is THIS handler-> pass in this handler to the return statement below code
+    const voteForSong = (songId) => {
+      // can't vote twice
+    };
+    // whenever song changes (song skips || song ends)
+    // 1. play arr[0] of songs THEN whipe that list of top 5 songs. 2. reset votes/queues/skips
+        // auto reset votes, and WIPE queue ++
+    //  **Call this on the winner:await queueSong(token, trackUri); ** this ACTUALLY queues the song -- PROB CHANGE THIS TO a PLAY SONG ROUTE
+ 
+
+
+
+    // ** DONT actually skip. only skip if majority skipped
     // 1. update total skips 2. compare to number of guests/majority if so, call await skipToNextTrack(token)
     const skipSong = async () => {
       // majority wins
@@ -264,54 +290,52 @@ export default function Player() {
       }
     }, [token]);
 
+    
+    const fetchGuestNames = async () => {
+      try {
+        const roomCode = localStorage.getItem("roomCode");
+        const response = await fetch("http://localhost:3001/api/get-guest-names", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomCode })
+        });
+  
+        const data = await response.json();
+        console.log("Fetched guest names:", data.names);
+        setGuestNames(data.names || []);
+      } catch (err) {
+        console.error("Failed to fetch guest names:", err);
+      }
+    };
 
-    // guest in the session
-    useEffect(() => {
-      const fetchGuestNames = async () => {
-        try {
-          const roomCode = localStorage.getItem("roomCode");
-          const response = await fetch("http://localhost:3001/api/get-guest-names", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomCode })
-          });
     
-          const data = await response.json();
-          console.log("Fetched guest names:", data.names);
-          setGuestNames(data.names || []);
-        } catch (err) {
-          console.error("Failed to fetch guest names:", err);
-        }
-      };
-    
-      fetchGuestNames();
-      const interval = setInterval(fetchGuestNames, 5000);
-      return () => clearInterval(interval);
-    }, []);
-    
-    
+
     // logout event handler
     const handleLogout = async () => {
-        const hostId = localStorage.getItem("hostId");
-        const guestId = localStorage.getItem("guestId");
-        const roomCode = localStorage.getItem("roomCode");
-        // delete whole document associated with hostId from DB
+      const hostId = localStorage.getItem("hostId");
+      const guestId = localStorage.getItem("guestId");
+      const roomCode = localStorage.getItem("roomCode");
+      // delete whole document associated with hostId from DB
+      if (hostId) {
         await fetch("http://localhost:3001/api/remove-session-and-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ hostId })
-        });        
-
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hostId })
+      }); 
+      }
+     
+      if (guestId) {
         // if guest logging out
         await fetch("http://localhost:3001/api/remove-guest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roomCode, guestId })
         });
+      }
 
-        localStorage.clear(); //regardless
-        window.location.href = "/";
-    }
+      localStorage.clear(); //regardless
+      window.location.href = "/";
+  }
 
 
     return (

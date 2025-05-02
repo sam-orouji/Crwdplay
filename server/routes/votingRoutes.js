@@ -2,7 +2,7 @@
 
 import express from "express";
 const router = express.Router();
-import { storeSongQueue, updateSongQueue, getSongQueue, removeSongQueue } from "../routeLogic/voting.js";
+import { storeSongQueue, updateSongQueue, getSongQueue, removeSongQueue, getUserState, setUserState } from "../routeLogic/voting.js";
 
 // add songs to voting queue ✅
 router.post("/add-song-queue", async(req, res) => {
@@ -107,6 +107,81 @@ try {
     res.status(500).json({ error: "Internal server error" });
 }
 });
+
+// check if a song is in the queue ✅
+router.get("/is-song-in-queue", async (req, res) => {
+  const { roomCode, songId } = req.query;
+
+  if (!roomCode || !songId) {
+    return res.status(400).json({ error: "roomCode and songId are required" });
+  }
+
+  try {
+    const result = await getSongQueue(roomCode);
+
+    if (!result.success) {
+      return res.status(404).json({ error: result.message || "Queue not found" });
+    }
+
+    const foundSong = result.songQueue.find(song => song.songId === songId);
+
+    if (foundSong) {
+      res.status(200).json({ exists: true});
+    } else {
+      res.status(200).json({ exists: false });
+    }
+  } catch (error) {
+    console.error("Server error while checking song in queue:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// check if guest/host voted or queued
+router.get("/get-user-state", async (req, res) => {
+  const { roomCode, userId, isHost } = req.query;
+
+  if (!roomCode || (isHost !== "true" && !userId)) {
+    return res.status(400).json({ error: "Missing roomCode or userId" });
+  }
+
+  try {
+    const result = await getUserState(roomCode, userId, isHost === "true");
+
+    if (!result.success) {
+      return res.status(404).json({ error: result.message });
+    }
+
+    res.status(200).json({ queued: result.queued, voted: result.voted });
+  } catch (err) {
+    console.error("Server error while getting user state:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// change status if guest/host voted or queued
+router.post("/set-user-state", async (req, res) => {
+  const { roomCode, isHost, userId, type, value } = req.body;
+
+  if (!roomCode || !["queued", "voted"].includes(type) || typeof value !== "boolean") {
+    return res.status(400).json({ error: "Invalid parameters" });
+  }
+
+  try {
+    const result = await setUserState(roomCode, userId, isHost === true || isHost === "true", type, value);
+
+    if (!result.success) {
+      return res.status(404).json({ error: result.message });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Server error in /set-user-state:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
   
 
 

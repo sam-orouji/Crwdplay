@@ -9,7 +9,7 @@ const Db = process.env.ATLAS_URI; // MongoDB connection URI
 export const client = new MongoClient(Db); // MongoDB client -- export to import in server.js & reuse for
 
 
-// ✅ store queue in DB: roomCode, songId, name, votes (0)
+// ✅ store song in DB: roomCode, songId, name, votes (0)
 export async function storeSongQueue(roomCode, songId, name, votes) {
     try {
         const db = client.db("Crowdplay");
@@ -124,13 +124,92 @@ export async function removeSongQueue(roomCode, songId) {
       console.error("Error removing song from votingQueue:", e);
     }
   }
+
+// get user state (voted/queued) for host AND guest
+export async function getUserState(roomCode, userId, isHost) {
+  try {
+    const db = client.db("Crowdplay");
+    const usersCollection = db.collection("users");
+
+    const session = await usersCollection.findOne(
+      { sessionCode: roomCode },
+      { projection: { guests: 1, hostQueued: 1, hostVoted: 1 } } // only return these fields 1=yes 0=no
+    );
+
+    if (!session) {
+      return { success: false, message: "Session not found" };
+    }
+
+    // if host logic
+    if (isHost) {
+      return {
+        success: true,
+        queued: session.hostQueued || false, // if nothing is stored ig just returns false
+        voted: session.hostVoted || false
+      };
+    }
+
+    // find correct guest
+    const guest = session.guests?.find(g => g.id === userId);
+    return {
+      success: true,
+      queued: guest?.queued || false,
+      voted: guest?.voted || false
+    };
+  } catch (error) {
+    console.error("Error getting user state:", error);
+    return { success: false, message: "Internal server error" };
+  }
+}
+
+// update user state (voted/queued) for host AND guest
+export async function setUserState(roomCode, userId, isHost, type, value) {
+  //  type and value for selecting voting/queue and true/false: type: "queued" or "voted", value: true or false
+  try {
+    const db = client.db("Crowdplay");
+    const usersCollection = db.collection("users");
+
+    const session = await usersCollection.findOne({ sessionCode: roomCode });
+
+    if (!session) {
+      return { success: false, message: "Session not found" };
+    }
+
+    if (isHost) {
+      const field = `host${type.charAt(0).toUpperCase()}${type.slice(1)}`; // hostQueued or hostVoted
+      await usersCollection.updateOne(
+        { sessionCode: roomCode },
+        { $set: { [field]: value } }
+      );
+    } else {
+      const guestExists = session.guests?.some(g => g.id === userId);
+
+      if (!guestExists) {
+        console.log(`Guest with ID ${userId} does not exist in room ${roomCode}`);
+        return { success: false, message: "Guest not found" };
+      }
+
+      const updateField = { [`guests.$.${type}`]: value };
+      await usersCollection.updateOne(
+        { sessionCode: roomCode, "guests.id": userId },
+        { $set: updateField }
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in setUserState:", error);
+    return { success: false, message: "Internal server error" };
+  }
+}
+
+
+
+
   
   
 
 
-// remove from queue - roomCode, songId (couldn't enter repeats any ways)
-
-//
 
 
 
