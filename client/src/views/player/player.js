@@ -22,12 +22,8 @@ export default function Player() {
 
     // ---------------------- VOTING LOGIC ----------------------
     const [error, setError] = useState("");
-    const [vote, setVote] = useState(false); // one vote & one queue only
-    const [queued, setQueued] = useState(false); // did a user try to queue?
     const [skip, setSkip] = useState(false); // did a user skip?
-    const [skipCount, setSkipCount] = useState(0);
-    const [songVotes, setSongVotes] = useState([]); // songId: "id1", votes: 2
-    const [topFiveSongs, setTopFiveSongs] = useState([]); // songId: "id1", title: "getLucky", votes "3"
+    const [topFiveSongs, setTopFiveSongs] = useState([]); // songId: "id1", title: "getLucky", votes "3" -- necesary to update jsx
     // const [lastTrackId, setLastTrackId] = useState(null); // trackId: to know when song changes ** we alr have nowPlaying -- ++ j check when this changes
     const [songQueue, setSongQueue] = useState(() => { // local var for state change + store in DB ** route NOT local storage
       const storedQueue = localStorage.getItem('songQueue');
@@ -50,16 +46,15 @@ export default function Player() {
     // ---------- PHASE 1 ------ display queues (only 1 queue wins. voting period after song changes --> populate songs)
 
 
-    // 1. first focus
-    // queue songs ** not actually queing on account, vote queues/ real queue occurs in findWinner function
-    // make sure trackID & name is passed into this when using search bar*** +++ how?
-    const handleQueueSong = async (trackId, trackName) => {
+    // queue songs (not actually queing on hosts account, adds to songQueue to vote from top 5)
+    // trackID & name is passed into this from search bars results/when clicked through prop handler
+    const handleQueueSong = async (trackId, trackName, trackImage) => {
       try {
         const isHost = localStorage.getItem("hostId") !== null;
-        const userId = localStorage.getItem("userId");
+        const guestId = localStorage.getItem("guestId");
     
         // 0. Check if user has already queued (via DB, not React state)
-        const votedRes = await fetch(`http://localhost:3001/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${userId}` : ""}`);
+        const votedRes = await fetch(`http://localhost:3001/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
         const votedData = await votedRes.json();
     
         if (votedData.queued) {
@@ -87,6 +82,7 @@ export default function Player() {
             songId: trackId,
             name: trackName,
             votes: 0,
+            image: trackImage
           }),
         });
     
@@ -97,16 +93,15 @@ export default function Player() {
           body: JSON.stringify({
             roomCode,
             isHost,
-            userId: isHost ? null : userId,
+            userId: isHost ? null : guestId,
             type: "queued",
             value: true
           }),
         });
     
         // 4. Update local state (optional, for instant UI feedback)
-        const newQueue = [...songQueue, { songId: trackId, title: trackName, votes: 0 }];
+        const newQueue = [...songQueue, { songId: trackId, title: trackName, votes: 0, image: trackImage }];
         setSongQueue(newQueue);
-        setQueued(true);
         setQueuedMessage(`🎵 Queued: ${trackName}`);
         setTimeout(() => setQueuedMessage(""), 3000);
     
@@ -118,15 +113,50 @@ export default function Player() {
     };
     
 
-
-    // getSongs: function to get top 5 songs in queue + GETS THE WINNER, so DONt NEED A SEPARATE FUNCTION: display the album covers on screen with number of votes under
-      // just run a for loop 5 times. O(5n) then arr[0] is winner
-    const getSongs = () => {
-      // call getQueue endpoint
-      // update topFiveSongs
-      // polled every 5 seconds
-    }
-
+    // getSongs: gets ALL songs in queue --> then stores top 5 votes - stable sort lol. ** reuse this for winner logic just return topFiveSongs[0]
+    const getSongs = async () => {
+      try {
+        const response = await fetch(`http://localhost:3001/api/get-song-queue?roomCode=${roomCode}`);
+        const data = await response.json();
+    
+        if (!response.ok || !data.songQueue) {
+          console.error("Failed to fetch song queue");
+          return;
+        }
+    
+        const queue = data.songQueue;
+    
+        // O(5n) selection: pick top 5 by votes, breaking ties by original order
+        const topFive = [];
+        const pickedIndexes = new Set();
+    
+        for (let i = 0; i < 5 && i < queue.length; i++) {
+          let maxVotes = -1;
+          let winnerIndex = -1;
+    
+          for (let j = 0; j < queue.length; j++) {
+            if (pickedIndexes.has(j)) continue;
+    
+            const song = queue[j];
+            if (song.votes > maxVotes) {
+              maxVotes = song.votes;
+              winnerIndex = j;
+            }
+          }
+    
+          if (winnerIndex !== -1) {
+            topFive.push(queue[winnerIndex]);
+            pickedIndexes.add(winnerIndex);
+          }
+        }
+    
+        setTopFiveSongs(topFive); // updates UI state
+        console.log("Top 5 songs selected:", topFive); // debug statement
+      } catch (err) {
+        console.error("Error fetching top songs:", err);
+      }
+    };
+      
 
     // current song playing -- important variable for resetting logic once songs change
     const currentSong = async () => {
@@ -158,7 +188,7 @@ export default function Player() {
     
       const interval = setInterval(() => { // start polling every 5 seconds for every function needing repeated checking
         currentSong();
-        getSongs();  // ++ call get songs also
+        getSongs(); // updates top 5 songs by votes!
         fetchGuestNames();
       }, 5000);
       return () => clearInterval(interval); // cleanup on unmount
@@ -378,7 +408,28 @@ export default function Player() {
               {/*error messages OR popups*/}
               {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
               
-              <p>voting screen</p>
+              <div className="top-songs">
+                <h3>Top 5 Songs</h3>
+                {topFiveSongs.length === 0 ? (
+                  <p>No songs in queue yet.</p>
+                ) : (
+                  <ol className="top-five-list">
+                    {topFiveSongs.map((song, index) => (
+                      <li key={song.songId} className={index === 0 ? "winner" : ""}>
+                        <div className="song-entry">
+                          {song.image && (
+                            <img src={song.image} alt={song.name} className="album-thumbnail" />
+                          )}
+                          <p>
+                            <strong>{index === 0 ? "🎉 " : ""}{song.name || "Untitled"}</strong>
+                            {" — "}{song.votes} vote{song.votes !== 1 && "s"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div> {/* top 5 songs */}
             </div>
 
             {/* session code, guest names, search/queue songs */}
@@ -411,7 +462,7 @@ export default function Player() {
                 {searchResults.length > 0 && (
                   <ul className="search-results">
                     {searchResults.map((track) => (
-                      <li key={track.id} onClick={() => handleQueueSong(track.id, track.name)}>
+                      <li key={track.id} onClick={() => handleQueueSong(track.id, track.name, track.image)}> {/* Pass in to queue logic!!*/}
                         <img src={track.image} alt={track.name} width="50" />
                         <span>{track.name} — {track.artist}</span>
                       </li>
@@ -422,7 +473,7 @@ export default function Player() {
                 {queuedMessage && <p className="queue-msg">{queuedMessage}</p>}
               </div> {/* search container*/}
                 
-            </div> {/* left panel*/}
+            </div> {/* right panel*/}
           </div>
 
 

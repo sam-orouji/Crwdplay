@@ -6,7 +6,7 @@ import { storeSongQueue, updateSongQueue, getSongQueue, removeSongQueue, getUser
 
 // add songs to voting queue ✅
 router.post("/add-song-queue", async(req, res) => {
-    const { roomCode, songId, name, votes} = req.body;
+    const { roomCode, songId, name, votes, image } = req.body;
 
     if (!roomCode || !songId || !name || votes === undefined) {
         console.log("Missing parameters:", {
@@ -19,7 +19,7 @@ router.post("/add-song-queue", async(req, res) => {
     }
 
     try {
-        const result = await storeSongQueue(roomCode, songId, name, votes);
+        const result = await storeSongQueue(roomCode, songId, name, votes, image);
 
         if (result.success) {
             res.status(200).json({ message: "song added to voting queue successfully" });
@@ -136,7 +136,7 @@ router.get("/is-song-in-queue", async (req, res) => {
   }
 });
 
-// check if guest/host voted or queued
+// check if guest/host voted or queued ✅
 router.get("/get-user-state", async (req, res) => {
   const { roomCode, userId, isHost } = req.query;
 
@@ -158,7 +158,7 @@ router.get("/get-user-state", async (req, res) => {
   }
 });
 
-// change status if guest/host voted or queued
+// change status if guest/host voted or queued ✅
 router.post("/set-user-state", async (req, res) => {
   const { roomCode, isHost, userId, type, value } = req.body;
 

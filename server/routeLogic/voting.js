@@ -10,7 +10,7 @@ export const client = new MongoClient(Db); // MongoDB client -- export to import
 
 
 // ✅ store song in DB: roomCode, songId, name, votes (0)
-export async function storeSongQueue(roomCode, songId, name, votes) {
+export async function storeSongQueue(roomCode, songId, name, votes, image) {
     try {
         const db = client.db("Crowdplay");
         const usersCollection = db.collection("users");
@@ -26,7 +26,7 @@ export async function storeSongQueue(roomCode, songId, name, votes) {
         // Push a new song object with songId, name and votes -- creates songQueue if DNE
         const result = await usersCollection.updateOne(
             { sessionCode: roomCode.toString() },
-            { $push: { songQueue: { songId, name, votes } } }, // check variables**
+            { $push: { songQueue: { songId, name, votes, image } } }, // check variables**
             { upsert: false }
         );
 
