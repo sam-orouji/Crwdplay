@@ -163,7 +163,8 @@ export default function Player() {
         name: track.name,
         artist: track.artist,
         album: track.album,
-        cover: track.image
+        cover: track.image,
+        uri: track.uri
       });
     };
 
@@ -242,32 +243,28 @@ export default function Player() {
     useEffect(() => {
       if (!nowPlaying || topFiveSongs.length === 0) return;
     
-      // Only run if song actually changed
-      if (nowPlaying.name === previousTrackId.current) return;
-      previousTrackId.current = nowPlaying.name;
+      const winner = topFiveSongs[0];
+    
+      // Don't trigger if the song didn't actually change
+      if (nowPlaying.uri === previousTrackId.current) return;
+      previousTrackId.current = nowPlaying.uri;
+    
+      // Don't auto-play if no one has voted yet
+      if (winner.votes === 0) return;
     
       const playAndReset = async () => {
         try {
-          const winner = topFiveSongs[0];
           const hostId = localStorage.getItem("hostId");
-    
-          console.log("🧪 Attempting to play winner song:", winner);
-    
-          // ✅ 1. Play the winning song using URI
-          if (hostId && token && winner.uri) {
+          if (hostId && token) {
             await playSong(token, winner.uri);
-          } else {
-            console.warn("⚠️ Missing hostId, token, or winner.uri");
           }
     
-          // ✅ 2. Clear queue
           await fetch("http://localhost:3001/api/clear-song-queue", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ roomCode }),
           });
     
-          // ✅ 3. Reset permissions
           const isHost = !!hostId;
           const guestId = localStorage.getItem("guestId");
     
@@ -294,6 +291,7 @@ export default function Player() {
     
       playAndReset();
     }, [nowPlaying]);
+    
     
  
 
