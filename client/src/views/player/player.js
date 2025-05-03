@@ -42,10 +42,6 @@ export default function Player() {
 
     
 
-
-    // ---------- PHASE 1 ------ display queues (only 1 queue wins. voting period after song changes --> populate songs)
-
-
     // queue songs (not actually queing on hosts account, adds to songQueue to vote from top 5)
     // trackID & name is passed into this from search bars results/when clicked through prop handler
     const handleQueueSong = async (trackId, trackName, trackImage) => {
@@ -58,7 +54,7 @@ export default function Player() {
         const votedData = await votedRes.json();
     
         if (votedData.queued) {
-          setQueuedMessage("You’ve already queued a song this round!");
+          setQueuedMessage("You've already queued a song this round!");
           setTimeout(() => setQueuedMessage(""), 3000);
           return;
         }
@@ -151,7 +147,7 @@ export default function Player() {
         }
     
         setTopFiveSongs(topFive); // updates UI state
-        console.log("Top 5 songs selected:", topFive); // debug statement
+        // console.log("Top 5 songs selected:", topFive); // debug statement
       } catch (err) {
         console.error("Error fetching top songs:", err);
       }
@@ -180,17 +176,17 @@ export default function Player() {
       });
     };
 
-    // POLLER: gets current song, top 5 voted songs, guest names, more to come (when mounted + every 5s) 
+    // POLLER: gets current song, top 5 voted songs, guest names, more to come (when mounted + every 2s) 
     useEffect(() => {
       if (!token) return;
 
       currentSong(); // Immediately fetch once on mount
     
-      const interval = setInterval(() => { // start polling every 5 seconds for every function needing repeated checking
+      const interval = setInterval(() => { // start polling every 2 seconds for every function needing repeated checking
         currentSong();
         getSongs(); // updates top 5 songs by votes!
         fetchGuestNames();
-      }, 5000);
+      }, 2000);
       return () => clearInterval(interval); // cleanup on unmount
     }, [token]);
 
@@ -200,10 +196,57 @@ export default function Player() {
 
     // ---------- PHASE 2: VOTING/SKIPPING ----------
     
-    // clicking on album cover is THIS handler-> pass in this handler to the return statement below code
-    const voteForSong = (songId) => {
-      // can't vote twice
+    // hanlder for clicking on album cover to vote!
+    const voteForSong = async (songId, songName, currentVotes) => {
+      const isHost = localStorage.getItem("hostId") !== null;
+      const guestId = localStorage.getItem("guestId");
+    
+      try {
+        // 1. Check if user already voted (via DB)
+        const res = await fetch(`http://localhost:3001/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
+        const stateData = await res.json();
+    
+        if (stateData.voted) {
+          setError("You’ve already voted this round!");
+          setTimeout(() => setError(""), 3000);
+          return;
+        }
+    
+        // 2. Call vote route to increment vote count
+        await fetch("http://localhost:3001/api/update-song-queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomCode,
+            songId,
+            name: songName,
+            votes: currentVotes + 1
+          }),
+        });
+    
+        // 3. Mark user as voted
+        await fetch("http://localhost:3001/api/set-user-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomCode,
+            isHost,
+            userId: isHost ? null : guestId,
+            type: "voted",
+            value: true
+          }),
+        });
+    
+        setError("✅ Vote registered!");
+        setTimeout(() => setError(""), 3000);
+      } catch (err) {
+        console.error("Error voting for song:", err);
+        setError("Error voting. Try again.");
+        setTimeout(() => setError(""), 3000);
+      }
     };
+    
+
     // whenever song changes (song skips || song ends)
     // 1. play arr[0] of songs THEN whipe that list of top 5 songs. 2. reset votes/queues/skips
         // auto reset votes, and WIPE queue ++
@@ -331,7 +374,7 @@ export default function Player() {
         });
   
         const data = await response.json();
-        console.log("Fetched guest names:", data.names);
+        // console.log("Fetched guest names:", data.names);
         setGuestNames(data.names || []);
       } catch (err) {
         console.error("Failed to fetch guest names:", err);
@@ -418,7 +461,13 @@ export default function Player() {
                       <li key={song.songId} className={index === 0 ? "winner" : ""}>
                         <div className="song-entry">
                           {song.image && (
-                            <img src={song.image} alt={song.name} className="album-thumbnail" />
+                            <img
+                            src={song.image}
+                            alt={song.name}
+                            className="album-thumbnail"
+                            onClick={() => voteForSong(song.songId, song.name, song.votes)}
+                            style={{ cursor: "pointer" }}
+                            />
                           )}
                           <p>
                             <strong>{index === 0 ? "🎉 " : ""}{song.name || "Untitled"}</strong>
@@ -432,7 +481,7 @@ export default function Player() {
               </div> {/* top 5 songs */}
             </div>
 
-            {/* session code, guest names, search/queue songs */}
+            {/* session code, guest names, search/queue songs, queueing messages */}
             <div className="right-panel">
               {roomCode && (
                   <div className="session-code">
@@ -448,6 +497,11 @@ export default function Player() {
                 ) : (
                   guestNames.map((name, index) => <p key={index}>{name}</p>)
                 )}
+              </div>
+
+              {/* error queueing message */}
+              <div className="queue-msg-wrapper">
+                <p className={`queue-msg ${queuedMessage ? "visible" : ""}`}>{queuedMessage || "⠀"}</p>
               </div>
 
               <div className="search-container">
@@ -470,7 +524,6 @@ export default function Player() {
                   </ul>
                 )}
 
-                {queuedMessage && <p className="queue-msg">{queuedMessage}</p>}
               </div> {/* search container*/}
                 
             </div> {/* right panel*/}

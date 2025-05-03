@@ -144,7 +144,7 @@ export async function getUserState(roomCode, userId, isHost) {
     if (isHost) {
       return {
         success: true,
-        queued: session.hostQueued || false, // if nothing is stored ig just returns false
+        queued: session.hostQueued || false, // if nothing is stored ig just returns false bc when a user joins we DONT instantiate queued or voted to false.
         voted: session.hostVoted || false
       };
     }

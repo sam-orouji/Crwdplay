@@ -209,6 +209,7 @@ body {
   /* ---------- VOTING SCREEN ---------- */
   .top-songs {
     margin-top: 1.5rem;
+    margin-bottom: 50px;
   }
   
   .top-five-list {
@@ -236,4 +237,35 @@ body {
     align-items: center;
     gap: 0.5rem;
   }
+
+  /* queue message */
+  .queue-msg-wrapper {
+    min-height: 48px; /* Reserve space even if no message */
+    width: 100%;
+  }
+  
+  .queue-msg {
+    width: 100%;
+    background-color: #ffecec;
+    color: #a94442;
+    padding: 12px 20px;
+    border-left: 4px solid #f44336; /* Light red accent */
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    box-sizing: border-box;
+  }
+  
+  .queue-msg.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+
+  
   
