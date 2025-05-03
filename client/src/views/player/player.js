@@ -1,7 +1,7 @@
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { fetchCurrentlyPlaying, skipToNextTrack, skipToPreviousTrack, searchSongs, queueSong, 
-          fetchUserProfile, fetchPlaybackState } from "../../logic/playback"; // PLAYBACK/UI FUNCTIONS
+import { useState, useEffect, useRef } from "react";
+import { fetchCurrentlyPlaying, skipToNextTrack, searchSongs, playSong, 
+          fetchUserProfile } from "../../logic/playback"; // PLAYBACK/UI FUNCTIONS
 import {} from "../../logic/voting"; // VOTING FUNCTIONS 
 import "./player.css";
 
@@ -16,31 +16,20 @@ export default function Player() {
     const [searchResults, setSearchResults] = useState([]);
     const [queuedMessage, setQueuedMessage] = useState("");
     const [guestNames, setGuestNames] = useState([]); // -- change to object to fetch other things in future for AI rec logic or doing things to their accounts/playlist
-    const [nowPlaying, setNowPlaying] = useState(null); // **song thats currently playing - polled every 5s
-    const [searchQuery, setSearchQuery] = useState(""); // **not queueing rn
+    const [searchQuery, setSearchQuery] = useState("");
+    const [error, setError] = useState("");
 
 
     // ---------------------- VOTING LOGIC ----------------------
-    const [error, setError] = useState("");
-    const [skip, setSkip] = useState(false); // did a user skip?
-    const [topFiveSongs, setTopFiveSongs] = useState([]); // songId: "id1", title: "getLucky", votes "3" -- necesary to update jsx
-    // const [lastTrackId, setLastTrackId] = useState(null); // trackId: to know when song changes ** we alr have nowPlaying -- ++ j check when this changes
+    const [nowPlaying, setNowPlaying] = useState(null); // song thats currently playing - polled every 5s
+    const previousTrackId = useRef(null); // ***for resetting privelidges: vote, queue, skip, and to play the winner song
+    const [topFiveSongs, setTopFiveSongs] = useState([]); // ecesary to update top 5 songs on screen
     const [songQueue, setSongQueue] = useState(() => { // local var for state change + store in DB ** route NOT local storage
       const storedQueue = localStorage.getItem('songQueue');
       return storedQueue ? JSON.parse(storedQueue) : []; // if DNE return empty array
     });
-    
-    // update local storage everytime react variable updates, and stores in local storage (change to DB later) - page reload
-        // Example songQueue structure:  (pass in songId to functions for queueing)
-        // [{ songId: "2Foc5Q5nqNiosCNqttzHof", 
-        // title: "Get Lucky (Radio Edit) [feat. Pharrell Williams and Nile Rodgers]", 
-        // votes: 0 }, ...]
-    useEffect(() => {
-      localStorage.setItem('songQueue', JSON.stringify(songQueue));
-    }, [songQueue]);
-  
 
-    
+  
 
     // queue songs (not actually queing on hosts account, adds to songQueue to vote from top 5)
     // trackID & name is passed into this from search bars results/when clicked through prop handler
@@ -62,6 +51,7 @@ export default function Player() {
         // 1. Check if song is already in queue
         const res = await fetch(`http://localhost:3001/api/is-song-in-queue?roomCode=${roomCode}&songId=${trackId}`);
         const data = await res.json();
+        const trackUri = `spotify:track:${trackId}`; // so hook can ACTUALLY play song when song changes**
     
         if (data.exists) {
           setQueuedMessage("Song is already in the queue!");
@@ -78,7 +68,8 @@ export default function Player() {
             songId: trackId,
             name: trackName,
             votes: 0,
-            image: trackImage
+            image: trackImage,
+            uri: trackUri
           }),
         });
     
@@ -96,7 +87,7 @@ export default function Player() {
         });
     
         // 4. Update local state (optional, for instant UI feedback)
-        const newQueue = [...songQueue, { songId: trackId, title: trackName, votes: 0, image: trackImage }];
+        const newQueue = [...songQueue, { songId: trackId, title: trackName, votes: 0, image: trackImage, uri: trackUri }];
         setSongQueue(newQueue);
         setQueuedMessage(`🎵 Queued: ${trackName}`);
         setTimeout(() => setQueuedMessage(""), 3000);
@@ -109,7 +100,7 @@ export default function Player() {
     };
     
 
-    // getSongs: gets ALL songs in queue --> then stores top 5 votes - stable sort lol. ** reuse this for winner logic just return topFiveSongs[0]
+    // getSongs: gets ALL songs in queue --> then stores top 5 votes - like a stable sort lol
     const getSongs = async () => {
       try {
         const response = await fetch(`http://localhost:3001/api/get-song-queue?roomCode=${roomCode}`);
@@ -196,7 +187,7 @@ export default function Player() {
 
     // ---------- PHASE 2: VOTING/SKIPPING ----------
     
-    // hanlder for clicking on album cover to vote!
+    // handler for clicking on album cover to vote!
     const voteForSong = async (songId, songName, currentVotes) => {
       const isHost = localStorage.getItem("hostId") !== null;
       const guestId = localStorage.getItem("guestId");
@@ -247,10 +238,63 @@ export default function Player() {
     };
     
 
-    // whenever song changes (song skips || song ends)
-    // 1. play arr[0] of songs THEN whipe that list of top 5 songs. 2. reset votes/queues/skips
-        // auto reset votes, and WIPE queue ++
-    //  **Call this on the winner:await queueSong(token, trackUri); ** this ACTUALLY queues the song -- PROB CHANGE THIS TO a PLAY SONG ROUTE
+    // whenever song changes (skipping or end): play winner + give back privileges
+    useEffect(() => {
+      if (!nowPlaying || topFiveSongs.length === 0) return;
+    
+      // Only run if song actually changed
+      if (nowPlaying.name === previousTrackId.current) return;
+      previousTrackId.current = nowPlaying.name;
+    
+      const playAndReset = async () => {
+        try {
+          const winner = topFiveSongs[0];
+          const hostId = localStorage.getItem("hostId");
+    
+          console.log("🧪 Attempting to play winner song:", winner);
+    
+          // ✅ 1. Play the winning song using URI
+          if (hostId && token && winner.uri) {
+            await playSong(token, winner.uri);
+          } else {
+            console.warn("⚠️ Missing hostId, token, or winner.uri");
+          }
+    
+          // ✅ 2. Clear queue
+          await fetch("http://localhost:3001/api/clear-song-queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomCode }),
+          });
+    
+          // ✅ 3. Reset permissions
+          const isHost = !!hostId;
+          const guestId = localStorage.getItem("guestId");
+    
+          const resetTypes = ["queued", "voted"];
+          for (const type of resetTypes) {
+            await fetch("http://localhost:3001/api/set-user-state", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                roomCode,
+                isHost,
+                userId: isHost ? null : guestId,
+                type,
+                value: false,
+              }),
+            });
+          }
+    
+          console.log("✅ Song played + state reset.");
+        } catch (err) {
+          console.error("❌ Error during playAndReset():", err);
+        }
+      };
+    
+      playAndReset();
+    }, [nowPlaying]);
+    
  
 
 
@@ -267,9 +311,6 @@ export default function Player() {
         return;
       }
 
-      if (skip) {
-        return; // user cannot try to skip if they already skipped
-      }
     
       await skipToNextTrack(token);
     };
@@ -448,9 +489,15 @@ export default function Player() {
           {/* voting screen */}
           <div className="bottom-panels">
             <div className="left-panel">
-              {/*error messages OR popups*/}
-              {error && <p className="error-message" style={{ color: "red" }}>{error}</p>}
-              
+              {/*voting error messages*/}
+              <div className="vote-msg-wrapper">
+                {error && (
+                  <p className={`vote-msg visible ${error.startsWith("✅") ? "success" : "error"}`}>
+                    {error}
+                  </p>
+                )}
+              </div>
+
               <div className="top-songs">
                 <h3>Top 5 Songs</h3>
                 {topFiveSongs.length === 0 ? (
@@ -501,8 +548,15 @@ export default function Player() {
 
               {/* error queueing message */}
               <div className="queue-msg-wrapper">
-                <p className={`queue-msg ${queuedMessage ? "visible" : ""}`}>{queuedMessage || "⠀"}</p>
+                {queuedMessage && (
+                  <p
+                    className={`queue-msg visible ${queuedMessage.startsWith("🎵") ? "success" : "error"}`}
+                  >
+                    {queuedMessage}
+                  </p>
+                )}
               </div>
+
 
               <div className="search-container">
                 <input

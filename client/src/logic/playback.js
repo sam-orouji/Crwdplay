@@ -126,6 +126,36 @@ export const durationOfSong = async (token) => {
   }
 };
 
+// Instantly play a song on the user's Spotify player
+export const playSong = async (token, trackUri, deviceId = null) => {
+  if (!token || !trackUri) {
+    console.error("Missing token or trackUri in playSong()");
+    return;
+  }
+
+  const url = "https://api.spotify.com/v1/me/player/play";
+  const payload = {
+    uris: [trackUri] // ✅ Spotify expects this to be an array
+  };
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    if (deviceId) {
+      await axios.put(`${url}?device_id=${deviceId}`, payload, { headers });
+    } else {
+      await axios.put(url, payload, { headers });
+    }
+
+    console.log(`🎵 Playing: ${trackUri}`);
+  } catch (error) {
+    console.error("⚠️ Error playing song:", error.response?.data || error.message);
+  }
+};
+
 
 // queue songs
 export const queueSong = async (token, trackUri, deviceId = null) => {

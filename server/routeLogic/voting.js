@@ -10,7 +10,7 @@ export const client = new MongoClient(Db); // MongoDB client -- export to import
 
 
 // ✅ store song in DB: roomCode, songId, name, votes (0)
-export async function storeSongQueue(roomCode, songId, name, votes, image) {
+export async function storeSongQueue(roomCode, songId, name, votes, image, uri) {
     try {
         const db = client.db("Crowdplay");
         const usersCollection = db.collection("users");
@@ -26,7 +26,7 @@ export async function storeSongQueue(roomCode, songId, name, votes, image) {
         // Push a new song object with songId, name and votes -- creates songQueue if DNE
         const result = await usersCollection.updateOne(
             { sessionCode: roomCode.toString() },
-            { $push: { songQueue: { songId, name, votes, image } } }, // check variables**
+            { $push: { songQueue: { songId, name, votes, image, uri } } }, // check variables**
             { upsert: false }
         );
 
@@ -94,36 +94,27 @@ export async function getSongQueue(roomCode) {
     }
   }
 
-// ✅ remove from queue in DB: remove song with songId inside roomCode
-export async function removeSongQueue(roomCode, songId) {
-    try {
-      const db = client.db("Crowdplay");
-      const usersCollection = db.collection("users");
-  
-      // Find the document first
-      const existingDoc = await usersCollection.findOne({ sessionCode: roomCode });
-      if (!existingDoc) {
-        console.error(`No document found with sessionCode: ${roomCode}`);
-        return { success: false, message: "Room code not found" };
-      }
-  
-      // Remove the song from songQueue array
-      const result = await usersCollection.updateOne(
-        { sessionCode: roomCode },
-        { $pull: { songQueue: { songId: songId } } }
-      );
-  
-      // Check if anything was actually modified
-      if (result.modifiedCount === 0) {
-        console.error(`No matching songId ${songId} found in room ${roomCode}`);
-        return { success: false, message: "Song not found in voting queue" };
-      }
-  
-      return { success: true };
-    } catch (e) {
-      console.error("Error removing song from votingQueue:", e);
+// ✅ clear the entire queue in DB for a given room
+export async function clearSongQueue(roomCode) {
+  try {
+    const db = client.db("Crowdplay");
+    const usersCollection = db.collection("users");
+
+    const result = await usersCollection.updateOne(
+      { sessionCode: roomCode },
+      { $set: { songQueue: [] } } // Replace queue with empty array
+    );
+
+    if (result.modifiedCount === 0) {
+      return { success: false, message: "Queue already empty or room not found" };
     }
+
+    return { success: true };
+  } catch (e) {
+    console.error("Error clearing voting queue:", e);
+    return { success: false, message: "DB error while clearing queue" };
   }
+}
 
 // get user state (voted/queued) for host AND guest
 export async function getUserState(roomCode, userId, isHost) {

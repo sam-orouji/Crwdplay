@@ -2,13 +2,13 @@
 
 import express from "express";
 const router = express.Router();
-import { storeSongQueue, updateSongQueue, getSongQueue, removeSongQueue, getUserState, setUserState } from "../routeLogic/voting.js";
+import { storeSongQueue, updateSongQueue, getSongQueue, clearSongQueue, getUserState, setUserState } from "../routeLogic/voting.js";
 
 // add songs to voting queue ✅
 router.post("/add-song-queue", async(req, res) => {
-    const { roomCode, songId, name, votes, image } = req.body;
+    const { roomCode, songId, name, votes, image, uri } = req.body;
 
-    if (!roomCode || !songId || !name || votes === undefined) {
+    if (!roomCode || !songId || !name || votes === undefined || !uri) {
         console.log("Missing parameters:", {
           roomCode: !roomCode,
           songId: !songId,
@@ -19,7 +19,7 @@ router.post("/add-song-queue", async(req, res) => {
     }
 
     try {
-        const result = await storeSongQueue(roomCode, songId, name, votes, image);
+        const result = await storeSongQueue(roomCode, songId, name, votes, image, uri);
 
         if (result.success) {
             res.status(200).json({ message: "song added to voting queue successfully" });
@@ -82,30 +82,28 @@ router.get("/get-song-queue", async (req, res) => {
     }
   });
 
-// Remove a song from the voting queue ✅
-router.post("/remove-song-queue", async (req, res) => {
-const { roomCode, songId } = req.body;
 
-if (!roomCode || !songId) {
-    console.log("Missing parameters:", {
-    roomCode: !roomCode,
-    songId: !songId
-    });
-    return res.status(400).json({ error: "Room code and songId are required" });
-}
+// Remove ALL songs from the voting queue ✅
+router.post("/clear-song-queue", async (req, res) => {
+  const { roomCode } = req.body;
 
-try {
-    const result = await removeSongQueue(roomCode, songId);
+  if (!roomCode) {
+    console.log("Missing roomCode");
+    return res.status(400).json({ error: "Room code is required" });
+  }
+
+  try {
+    const result = await clearSongQueue(roomCode);
 
     if (result.success) {
-    res.status(200).json({ message: "Song removed from voting queue successfully" });
+      res.status(200).json({ message: "Queue cleared successfully" });
     } else {
-    res.status(404).json({ error: result.message || "Failed to remove song from voting queue" });
+      res.status(404).json({ error: result.message || "Failed to clear queue" });
     }
-} catch (error) {
-    console.error("Server error while removing song from voting queue:", error);
+  } catch (error) {
+    console.error("Server error while clearing queue:", error);
     res.status(500).json({ error: "Internal server error" });
-}
+  }
 });
 
 // check if a song is in the queue ✅
@@ -158,7 +156,7 @@ router.get("/get-user-state", async (req, res) => {
   }
 });
 
-// change status if guest/host voted or queued ✅
+// change status if guest/host voted or queued ✅ ***edit this to add skipping.
 router.post("/set-user-state", async (req, res) => {
   const { roomCode, isHost, userId, type, value } = req.body;
 
