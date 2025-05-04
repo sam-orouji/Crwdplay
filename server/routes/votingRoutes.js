@@ -71,10 +71,11 @@ router.get("/get-song-queue", async (req, res) => {
     try {
       const result = await getSongQueue(roomCode);
   
+      // *if no queue yet, return empty array instead of error 404
       if (result.success) {
         res.status(200).json({ songQueue: result.songQueue });
       } else {
-        res.status(404).json({ error: result.message || "Failed to retrieve voting queue" });
+        res.status(200).json({ error: result.message || "Failed to retrieve voting queue" });
       }
     } catch (error) {
       console.error("Server error while getting voting queue:", error);

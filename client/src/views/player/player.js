@@ -12,6 +12,7 @@ export default function Player() {
     const [token, setToken] = useState(null);  // not passing in token: getting from roomCode (for new tabs + other users)
     const roomCode = params.roomCode; // getting roomCode from URL
     const navigate = useNavigate();
+    const [userProfileUrl, setUserProfileUrl] = useState(null);
 
     const [searchResults, setSearchResults] = useState([]);
     const [queuedMessage, setQueuedMessage] = useState("");
@@ -168,17 +169,17 @@ export default function Player() {
       });
     };
 
-    // POLLER: gets current song, top 5 voted songs, guest names, more to come (when mounted + every 2s) 
+    // POLLER: gets current song, top 5 voted songs, guest names, more to come (when mounted + every 5s) 
     useEffect(() => {
       if (!token) return;
 
       currentSong(); // Immediately fetch once on mount
     
-      const interval = setInterval(() => { // start polling every 2 seconds for every function needing repeated checking
+      const interval = setInterval(() => { // start polling every 5 seconds for every function needing repeated checking
         currentSong();
         getSongs(); // updates top 5 songs by votes!
         fetchGuestNames();
-      }, 2000);
+      }, 5000);
       return () => clearInterval(interval); // cleanup on unmount
     }, [token]);
 
@@ -381,20 +382,15 @@ export default function Player() {
     
     // profile pic
     const setUserProfilePicture = async () => {
-      // only display for host
       const hostId = localStorage.getItem("hostId");
-
       if (token && hostId) {
-        // Fetch profile picture
         const userProfile = await fetchUserProfile(token);
         if (userProfile && userProfile.profilePicture) {
-          
-          const profilePictureElement = document.getElementById('profile-picture');
-          profilePictureElement.src = userProfile.profilePicture;
-          profilePictureElement.style.display = 'block';
+          setUserProfileUrl(userProfile.profilePicture); // ✅ set state, not DOM
         }
       }
     };
+    
     // make sure pfp displayed on mount & changes on refresh
     useEffect(() => {
       if (token) {
@@ -454,12 +450,13 @@ export default function Player() {
       <> 
         <nav className="sidebar">
             <div className="profile-pic">
-              <img
-                id="profile-picture"
-                src=""
-                alt="Profile Picture"
-                style={{ display: 'none', borderRadius: '50%', width: '40px', height: '40px' }}
-              />
+              {userProfileUrl && (
+                <img
+                  src={userProfileUrl}
+                  alt="Profile Picture"
+                  style={{ borderRadius: '50%', width: '40px', height: '40px' }}
+                />
+              )}
             </div>
 
             <ul className="sidebar-links">

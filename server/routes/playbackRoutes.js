@@ -83,7 +83,8 @@ router.post("/get-guest-names", async (req, res) => {
   const { roomCode } = req.body;
 
   if (!roomCode) {
-    return res.status(400).json({ error: "roomCode is required" });
+    // return empty list if roomCode NOT provided
+    return res.status(200).json({ names: [] });
   }
 
   try {
