@@ -80,7 +80,7 @@ export default function Player() {
         });
     
         // 3. Update user state in DB to mark as queued
-        await fetch(`${baseUrl}//api/set-user-state`, {
+        await fetch(`${baseUrl}/api/set-user-state`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
