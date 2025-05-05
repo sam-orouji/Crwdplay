@@ -1,36 +1,5 @@
 import axios from "axios"; // stops you from writing "await fetch(endpoint)" and HTTP errors + .json to parse JSON
 
-export const fetchCurrentlyPlaying = async (token) => {
-  if (!token) {
-    console.error("No access token provided");
-    return null;
-  }
-
-  try {
-    const response = await axios.get("https://api.spotify.com/v1/me/player/currently-playing", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (response.data && response.data.item) {
-      const track = response.data.item;
-      return {
-        name: track.name,
-        artist: track.artists.map((artist) => artist.name).join(", "),
-        album: track.album.name,
-        image: track.album.images[0]?.url,
-      };
-    } else {
-      return null; // No song playing
-    }
-  } catch (error) {
-    console.error("Error fetching currently playing track:", error);
-    return null;
-  }
-};
-
-
 // ✅ Function to skip to the next track
 export const skipToNextTrack = async (token) => {
   if (!token) {
@@ -89,7 +58,6 @@ export const searchSongs = async (token, query) => {
 };
 
 
-
 // ✅ Function to display duration of current song -- maybe use later
 export const durationOfSong = async (token) => {
   if (!token) {
@@ -126,7 +94,39 @@ export const durationOfSong = async (token) => {
   }
 };
 
-// Instantly play a song on the user's Spotify player
+
+// 🚦
+export const fetchCurrentlyPlaying = async (token) => {
+  if (!token) {
+    console.error("No access token provided");
+    return null;
+  }
+
+  try {
+    const response = await axios.get("https://api.spotify.com/v1/me/player/currently-playing", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.data && response.data.item) {
+      const track = response.data.item;
+      return {
+        name: track.name,
+        artist: track.artists.map((artist) => artist.name).join(", "),
+        album: track.album.name,
+        image: track.album.images[0]?.url,
+      };
+    } else {
+      return null; // No song playing
+    }
+  } catch (error) {
+    console.error("Error fetching currently playing track:", error);
+    return null;
+  }
+};
+
+// Instantly play a song on the user's Spotify player 🚦
 export const playSong = async (token, trackUri, deviceId = null) => {
   if (!token || !trackUri) {
     console.error("Missing token or trackUri in playSong()");
@@ -156,62 +156,7 @@ export const playSong = async (token, trackUri, deviceId = null) => {
   }
 };
 
-
-// queue songs
-export const queueSong = async (token, trackUri, deviceId = null) => {
-  if (!token) {
-    console.error("No access token provided.");
-    return;
-  }
-
-  try {
-    const url = `https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(trackUri)}`;
-    
-    // Append device ID if provided
-    const finalUrl = deviceId ? `${url}&device_id=${deviceId}` : url;
-
-    const response = await axios.post(finalUrl, {}, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-  } catch (error) {
-    console.error("⚠️ Error adding song to queue:", error.response?.data || error.message);
-  }
-};
-
-//fetch profile picture
-export const fetchUserProfile = async (token) => {
-  if (!token) {
-    console.error("No access token provided");
-    return null;
-  }
-
-  try {
-    const response = await axios.get("https://api.spotify.com/v1/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (response.data) {
-      return {
-        displayName: response.data.display_name,
-        profilePicture: response.data.images[0]?.url || "",
-      };
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error("Error fetching user profile:", error.response?.data || error.message);
-    return null;
-  }
-};
-
-// fetch the current playback state ** useful!
+// fetch the current playback state ** useful! 🚦
 export const fetchPlaybackState = async (token) => {
   if (!token) {
     console.error("No access token provided");
@@ -253,3 +198,60 @@ export const fetchPlaybackState = async (token) => {
     return null;
   }
 };
+
+// queue songs 🚦
+export const queueSong = async (token, trackUri, deviceId = null) => {
+  if (!token) {
+    console.error("No access token provided.");
+    return;
+  }
+
+  try {
+    const url = `https://api.spotify.com/v1/me/player/queue?uri=${encodeURIComponent(trackUri)}`;
+    
+    // Append device ID if provided
+    const finalUrl = deviceId ? `${url}&device_id=${deviceId}` : url;
+
+    const response = await axios.post(finalUrl, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+  } catch (error) {
+    console.error("⚠️ Error adding song to queue:", error.response?.data || error.message);
+  }
+};
+
+
+
+//fetch profile picture
+export const fetchUserProfile = async (token) => {
+  if (!token) {
+    console.error("No access token provided");
+    return null;
+  }
+
+  try {
+    const response = await axios.get("https://api.spotify.com/v1/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.data) {
+      return {
+        displayName: response.data.display_name,
+        profilePicture: response.data.images[0]?.url || "",
+      };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching user profile:", error.response?.data || error.message);
+    return null;
+  }
+};
+

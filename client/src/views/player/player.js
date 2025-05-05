@@ -1,6 +1,6 @@
 import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { fetchCurrentlyPlaying, skipToNextTrack, searchSongs, playSong, 
+import { fetchCurrentlyPlaying, queueSong, skipToNextTrack, searchSongs, 
           fetchUserProfile } from "../../logic/playback"; // PLAYBACK/UI FUNCTIONS
 import {} from "../../logic/voting"; // VOTING FUNCTIONS 
 import "./player.css";
@@ -22,15 +22,14 @@ export default function Player() {
 
 
     // ---------------------- VOTING LOGIC ----------------------
-    const [nowPlaying, setNowPlaying] = useState(null); // song thats currently playing - polled every 5s
-    const previousTrackId = useRef(null); // ***for resetting privelidges: vote, queue, skip, and to play the winner song
-    const [topFiveSongs, setTopFiveSongs] = useState([]); // ecesary to update top 5 songs on screen
+    const [nowPlaying, setNowPlaying] = useState(null); // Initialize as null
+    const previousTrackUri = useRef(null); // previous song
+    const songEndTimeoutId = useRef(null); // Store timeout ID for cleanup
+    const [topFiveSongs, setTopFiveSongs] = useState([]); // necessary to update top 5 songs on screen
     const [songQueue, setSongQueue] = useState(() => { // local var for state change + store in DB ** route NOT local storage
       const storedQueue = localStorage.getItem('songQueue');
       return storedQueue ? JSON.parse(storedQueue) : []; // if DNE return empty array
     });
-
-  
 
     // queue songs (not actually queing on hosts account, adds to songQueue to vote from top 5)
     // trackID & name is passed into this from search bars results/when clicked through prop handler
@@ -139,12 +138,127 @@ export default function Player() {
         }
     
         setTopFiveSongs(topFive); // updates UI state
-        // console.log("Top 5 songs selected:", topFive); // debug statement
+        console.log("Top 5 songs updated:", topFive);
       } catch (err) {
         console.error("Error fetching top songs:", err);
       }
     };
+
+    // function to calculate time remaining in current song and schedule next song
+    const scheduleNextSong = async () => {
+      if (!token) return;
+    
+      try {
+        const response = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+    
+        if (!response.ok) {
+          console.error("Error fetching current playback:", response.status);
+          return;
+        }
+    
+        const data = await response.json();
+    
+        if (data && data.item) {
+          const totalDuration = data.item.duration_ms;
+          const progress = data.progress_ms;
+          const timeRemaining = totalDuration - progress;
+          const offset = 5000; // 5 seconds in ms
+          
+          // Time until we should queue the next song (5 seconds before end)
+          const timeUntilQueue = Math.max(0, timeRemaining - offset);
+          
+          console.log(`⏱️ Current song: ${timeRemaining}ms remaining, will trigger in ${timeUntilQueue}ms`);
+          
+          // Clear any existing timeout
+          if (songEndTimeoutId.current) {
+            clearTimeout(songEndTimeoutId.current);
+          }
+          
+          // Set new timeout to queue next song
+          songEndTimeoutId.current = setTimeout(() => {
+            console.log("🎵 Time to queue next song!");
+            playNextSong();
+          }, timeUntilQueue);
+        }
+      } catch (err) {
+        console.error("Error scheduling next song:", err);
+      }
+    };
+    
+    // Play the next song (winning song from votes)
+  // Play the next song (winning song from votes)
+  const playNextSong = async () => {
+    try {
+      // Fetch songs directly from DB instead of relying on state
+      const response = await fetch(`http://localhost:3001/api/get-song-queue?roomCode=${roomCode}`);
+      const data = await response.json();
       
+      if (!response.ok || !data.songQueue || data.songQueue.length === 0) {
+        console.warn("No songs in queue to play next");
+        return;
+      }
+      
+      // Sort the songs by votes
+      const songQueue = data.songQueue;
+      songQueue.sort((a, b) => b.votes - a.votes);
+      
+      const winner = songQueue[0]; // top-voted song
+      console.log("🏆 Playing winner:", winner.name, "with", winner.votes, "votes");
+      
+      const hostId = localStorage.getItem("hostId");
+      const guestId = localStorage.getItem("guestId");
+      const isHost = !!hostId;
+      
+      // 1. Queue the winning song
+      if (hostId && token) {
+        console.log("Queueing song:", winner.uri);
+        await queueSong(token, winner.uri);
+        
+        // Short delay before skipping to ensure queue request completes
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Skip to the next track (the one we just queued)
+        await skipToNextTrack(token);
+        console.log("Skipped to queued song");
+      }
+      
+      // 2. Clear the song queue in DB
+      await fetch("http://localhost:3001/api/clear-song-queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode }),
+      });
+      
+      // 3. Reset user voting & queue states
+      const resetTypes = ["queued", "voted"];
+      for (const type of resetTypes) {
+        await fetch("http://localhost:3001/api/set-user-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomCode,
+            isHost,
+            userId: isHost ? null : guestId,
+            type,
+            value: false,
+          }),
+        });
+      }
+      
+      // 4. Update the UI
+      await getSongs();
+      
+      console.log("✅ Winner played & state reset successfully");
+    } catch (err) {
+      console.error("❌ Error playing next song:", err);
+    }
+  };
 
     // current song playing -- important variable for resetting logic once songs change
     const currentSong = async () => {
@@ -153,41 +267,66 @@ export default function Player() {
         return;
       }
     
-      const track = await fetchCurrentlyPlaying(token);
-    
-      if (!track) {
-        console.log("No song currently playing");
-        return;
+      try {
+        const track = await fetchCurrentlyPlaying(token);
+        
+        if (track) {
+          setNowPlaying({
+            name: track.name,
+            artist: track.artist,
+            album: track.album,
+            cover: track.image,
+            uri: track.uri
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching current song:", error);
       }
-    
-      setNowPlaying({
-        name: track.name,
-        artist: track.artist,
-        album: track.album,
-        cover: track.image,
-        uri: track.uri
-      });
     };
 
     // POLLER: gets current song, top 5 voted songs, guest names, more to come (when mounted + every 5s) 
     useEffect(() => {
       if (!token) return;
 
-      currentSong(); // Immediately fetch once on mount
+      // Initial fetch of data
+      const initialFetch = async () => {
+        await currentSong();
+        await getSongs();
+        await fetchGuestNames();
+        await scheduleNextSong(); // Schedule the next song immediately
+      };
+      
+      initialFetch();
     
-      const interval = setInterval(() => { // start polling every 5 seconds for every function needing repeated checking
+      // Set up polling interval
+      const interval = setInterval(() => {
         currentSong();
-        getSongs(); // updates top 5 songs by votes!
+        getSongs();
         fetchGuestNames();
-      }, 5000);
-      return () => clearInterval(interval); // cleanup on unmount
+      }, 10000);
+      
+      return () => {
+        clearInterval(interval);
+        // Clean up any pending timeouts
+        if (songEndTimeoutId.current) {
+          clearTimeout(songEndTimeoutId.current);
+        }
+      };
     }, [token]);
 
-
-
-
-
-    // ---------- PHASE 2: VOTING/SKIPPING ----------
+    // When current song changes, schedule the next song
+    useEffect(() => {
+      if (!nowPlaying || !token) return;
+      
+      // If the song has changed
+      if (nowPlaying.uri !== previousTrackUri.current) {
+        console.log("🔄 Song changed to:", nowPlaying.name);
+        previousTrackUri.current = nowPlaying.uri;
+        
+        // Calculate when to queue the next song
+        scheduleNextSong();
+      }
+    }, [nowPlaying, token]);
     
     // handler for clicking on album cover to vote!
     const voteForSong = async (songId, songName, currentVotes) => {
@@ -200,7 +339,7 @@ export default function Player() {
         const stateData = await res.json();
     
         if (stateData.voted) {
-          setError("You’ve already voted this round!");
+          setError("You've already voted this round!");
           setTimeout(() => setError(""), 3000);
           return;
         }
@@ -232,86 +371,30 @@ export default function Player() {
     
         setError("✅ Vote registered!");
         setTimeout(() => setError(""), 3000);
+        
+        // Refresh the song list to show updated votes
+        getSongs();
       } catch (err) {
         console.error("Error voting for song:", err);
         setError("Error voting. Try again.");
         setTimeout(() => setError(""), 3000);
       }
     };
-    
 
-    // whenever song changes (skipping or end): play winner + give back privileges
-    useEffect(() => {
-      if (!nowPlaying || topFiveSongs.length === 0) return;
-    
-      const winner = topFiveSongs[0];
-    
-      // Don't trigger if the song didn't actually change
-      if (nowPlaying.uri === previousTrackId.current) return;
-      previousTrackId.current = nowPlaying.uri;
-    
-      // Don't auto-play if no one has voted yet
-      if (winner.votes === 0) return;
-    
-      const playAndReset = async () => {
-        try {
-          const hostId = localStorage.getItem("hostId");
-          if (hostId && token) {
-            await playSong(token, winner.uri);
-          }
-    
-          await fetch("http://localhost:3001/api/clear-song-queue", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomCode }),
-          });
-    
-          const isHost = !!hostId;
-          const guestId = localStorage.getItem("guestId");
-    
-          const resetTypes = ["queued", "voted"];
-          for (const type of resetTypes) {
-            await fetch("http://localhost:3001/api/set-user-state", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                roomCode,
-                isHost,
-                userId: isHost ? null : guestId,
-                type,
-                value: false,
-              }),
-            });
-          }
-    
-          console.log("✅ Song played + state reset.");
-        } catch (err) {
-          console.error("❌ Error during playAndReset():", err);
-        }
-      };
-    
-      playAndReset();
-    }, [nowPlaying]);
-    
-    
- 
-
-
-
-    // ** DONT actually skip. only skip if majority skipped
-    // 1. update total skips 2. compare to number of guests/majority if so, call await skipToNextTrack(token)
+    // Skip function for manual skipping
     const skipSong = async () => {
-      // majority wins
-      // ROUTE FOR GETUSERS. get length and GET integer of GETVOTES 
-      // reset skip to false after song ends -- hook
-                
       if (!token) {
         console.error("Missing token");
         return;
       }
-
     
       await skipToNextTrack(token);
+      
+      // Re-schedule the next song
+      setTimeout(() => {
+        currentSong();
+        scheduleNextSong();
+      }, 1000);
     };
     
       
