@@ -43,7 +43,9 @@ export default function Player() {
         const guestId = localStorage.getItem("guestId");
     
         // 0. Check if user has already queued (via DB, not React state)
-        const votedRes = await fetch(`${baseUrl}/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
+        const hostUrl = `${baseUrl}/api/get-user-state?roomCode=${roomCode}&isHost=true`;
+        const guestUrl = `${baseUrl}/api/get-user-state?roomCode=${roomCode}&isHost=false&userId=${guestId}`;
+        const votedRes = await fetch(isHost ? hostUrl : guestUrl);
         const votedData = await votedRes.json();
     
         if (votedData.queued) {
