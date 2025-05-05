@@ -13,8 +13,24 @@ await client.connect();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+const allowedOrigins = ["https://crowdplay.onrender.com"];
+
+// Middleware (cors PICKS which routes can talk to backend )
+// NO postman or cURL type site can access only on the website WITH an origin
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) {
+      // No origin header (like Postman) — reject
+      return callback(new Error("CORS blocked: No origin"), false);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("CORS blocked: Origin not allowed"), false);
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Routes call /api then route ex: localhost:3001/api/get-session
