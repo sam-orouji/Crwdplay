@@ -144,7 +144,7 @@ export default function Player() {
         }
     
         setTopFiveSongs(topFive); // updates UI state
-        console.log("Top 5 songs updated:", topFive);
+        // console.log("Top 5 songs updated:", topFive);
       } catch (err) {
         console.error("Error fetching top songs:", err);
       }
@@ -179,7 +179,7 @@ export default function Player() {
           // Time until we should queue the next song (5 seconds before end)
           const timeUntilQueue = Math.max(0, timeRemaining - offset);
           
-          console.log(`⏱️ Current song: ${timeRemaining}ms remaining, will trigger in ${timeUntilQueue}ms`);
+          // console.log(`⏱️ Current song: ${timeRemaining}ms remaining, will trigger in ${timeUntilQueue}ms`);
           
           // Clear any existing timeout
           if (songEndTimeoutId.current) {
@@ -188,7 +188,7 @@ export default function Player() {
           
           // Set new timeout to queue next song
           songEndTimeoutId.current = setTimeout(() => {
-            console.log("🎵 Time to queue next song!");
+            // console.log("🎵 Time to queue next song!");
             playNextSong();
           }, timeUntilQueue);
         }
@@ -215,7 +215,7 @@ export default function Player() {
       songQueue.sort((a, b) => b.votes - a.votes);
       
       const winner = songQueue[0]; // top-voted song
-      console.log("🏆 Playing winner:", winner.name, "with", winner.votes, "votes");
+      // console.log("🏆 Playing winner:", winner.name, "with", winner.votes, "votes");
       
       const hostId = localStorage.getItem("hostId");
       const guestId = localStorage.getItem("guestId");
@@ -223,7 +223,7 @@ export default function Player() {
       
       // 1. Queue the winning song
       if (hostId && token) {
-        console.log("Queueing song:", winner.uri);
+        // console.log("Queueing song:", winner.uri);
         await queueSong(token, winner.uri);
         
         // Short delay before skipping to ensure queue request completes
@@ -231,7 +231,7 @@ export default function Player() {
         
         // Skip to the next track (the one we just queued)
         await skipToNextTrack(token);
-        console.log("Skipped to queued song");
+        // console.log("Skipped to queued song");
       }
       
       // 2. Clear the song queue in DB
@@ -260,7 +260,7 @@ export default function Player() {
       // 4. Update the UI
       await getSongs();
       
-      console.log("✅ Winner played & state reset successfully");
+      // console.log("✅ Winner played & state reset successfully");
     } catch (err) {
       console.error("❌ Error playing next song:", err);
     }
@@ -326,7 +326,7 @@ export default function Player() {
       
       // If the song has changed
       if (nowPlaying.uri !== previousTrackUri.current) {
-        console.log("🔄 Song changed to:", nowPlaying.name);
+        // console.log("🔄 Song changed to:", nowPlaying.name);
         previousTrackUri.current = nowPlaying.uri;
         
         // Calculate when to queue the next song
