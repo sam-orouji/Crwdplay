@@ -13,7 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/voting" element={<Voting />} />
+        {/* <Route path="/voting" element={<Voting />} /> */}
         <Route path="/player/:roomCode" element={<Player />} />
         <Route path="*" element="Page not found"/>
         <Route path="/unauthorized" element={<AuthRequired />} />

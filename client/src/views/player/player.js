@@ -544,7 +544,7 @@ export default function Player() {
 
             <ul className="sidebar-links">
                 <li><Link to="/">🏠 Home</Link></li>
-                <li><Link to="/voting">🗳️ Voting</Link></li>
+                {/*<li><Link to="/voting">🗳️ Voting</Link></li>*/}
                 <li><Link to="/" onClick={handleLogout}>Log Out</Link></li>
             </ul>
         </nav>
