@@ -10,6 +10,10 @@ export default function Login() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
+  // ----- deployment -----
+  const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+
   useEffect(() => {
     const extractTokenFromUrl = () => {
       const hash = window.location.hash;
@@ -31,7 +35,7 @@ export default function Login() {
       localStorage.setItem("hostId", hostId);
       localStorage.setItem("roomCode", code);
 
-      await fetch("http://localhost:3001/api/store-session-and-token", {
+      await fetch(`${baseUrl}/api/store-session-and-token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hostId, sessionCode: code, token })
@@ -84,7 +88,7 @@ export default function Login() {
     }
 
     try {
-      const response = await fetch("http://localhost:3001/api/validate-room-code", {
+      const response = await fetch(`${baseUrl}/api/validate-room-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomCode: inputCode })
@@ -97,7 +101,7 @@ export default function Login() {
       localStorage.setItem("guestId", guestId);
       localStorage.setItem("roomCode", inputCode);
 
-      const writeName = await fetch("http://localhost:3001/api/update-guests", {
+      const writeName = await fetch(`${baseUrl}/api/update-guests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomCode: inputCode, guestId, name })

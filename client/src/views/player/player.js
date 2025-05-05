@@ -31,6 +31,10 @@ export default function Player() {
       return storedQueue ? JSON.parse(storedQueue) : []; // if DNE return empty array
     });
 
+    // ----- DEPLOYMENT -----
+    const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+
     // queue songs (not actually queing on hosts account, adds to songQueue to vote from top 5)
     // trackID & name is passed into this from search bars results/when clicked through prop handler
     const handleQueueSong = async (trackId, trackName, trackImage) => {
@@ -39,7 +43,7 @@ export default function Player() {
         const guestId = localStorage.getItem("guestId");
     
         // 0. Check if user has already queued (via DB, not React state)
-        const votedRes = await fetch(`http://localhost:3001/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
+        const votedRes = await fetch(`${baseUrl}/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
         const votedData = await votedRes.json();
     
         if (votedData.queued) {
@@ -49,7 +53,7 @@ export default function Player() {
         }
     
         // 1. Check if song is already in queue
-        const res = await fetch(`http://localhost:3001/api/is-song-in-queue?roomCode=${roomCode}&songId=${trackId}`);
+        const res = await fetch(`${baseUrl}/api/is-song-in-queue?roomCode=${roomCode}&songId=${trackId}`);
         const data = await res.json();
         const trackUri = `spotify:track:${trackId}`; // so hook can ACTUALLY play song when song changes**
     
@@ -60,7 +64,7 @@ export default function Player() {
         }
     
         // 2. Add song to queue in DB
-        await fetch("http://localhost:3001/api/add-song-queue", {
+        await fetch(`${baseUrl}/api/add-song-queue`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -74,7 +78,7 @@ export default function Player() {
         });
     
         // 3. Update user state in DB to mark as queued
-        await fetch("http://localhost:3001/api/set-user-state", {
+        await fetch(`${baseUrl}//api/set-user-state`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -103,7 +107,7 @@ export default function Player() {
     // getSongs: gets ALL songs in queue --> then stores top 5 votes - like a stable sort lol
     const getSongs = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/get-song-queue?roomCode=${roomCode}`);
+        const response = await fetch(`${baseUrl}/api/get-song-queue?roomCode=${roomCode}`);
         const data = await response.json();
     
         if (!response.ok || !data.songQueue) {
@@ -196,7 +200,7 @@ export default function Player() {
   const playNextSong = async () => {
     try {
       // Fetch songs directly from DB instead of relying on state
-      const response = await fetch(`http://localhost:3001/api/get-song-queue?roomCode=${roomCode}`);
+      const response = await fetch(`${baseUrl}/api/get-song-queue?roomCode=${roomCode}`);
       const data = await response.json();
       
       if (!response.ok || !data.songQueue || data.songQueue.length === 0) {
@@ -229,7 +233,7 @@ export default function Player() {
       }
       
       // 2. Clear the song queue in DB
-      await fetch("http://localhost:3001/api/clear-song-queue", {
+      await fetch(`${baseUrl}/api/clear-song-queue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomCode }),
@@ -238,7 +242,7 @@ export default function Player() {
       // 3. Reset user voting & queue states
       const resetTypes = ["queued", "voted"];
       for (const type of resetTypes) {
-        await fetch("http://localhost:3001/api/set-user-state", {
+        await fetch(`${baseUrl}/api/set-user-state`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -335,7 +339,7 @@ export default function Player() {
     
       try {
         // 1. Check if user already voted (via DB)
-        const res = await fetch(`http://localhost:3001/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
+        const res = await fetch(`${baseUrl}/api/get-user-state?roomCode=${roomCode}&isHost=${isHost}${!isHost ? `&userId=${guestId}` : ""}`);
         const stateData = await res.json();
     
         if (stateData.voted) {
@@ -345,7 +349,7 @@ export default function Player() {
         }
     
         // 2. Call vote route to increment vote count
-        await fetch("http://localhost:3001/api/update-song-queue", {
+        await fetch(`${baseUrl}/api/update-song-queue`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -357,7 +361,7 @@ export default function Player() {
         });
     
         // 3. Mark user as voted
-        await fetch("http://localhost:3001/api/set-user-state", {
+        await fetch(`${baseUrl}/api/set-user-state`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -418,7 +422,7 @@ export default function Player() {
       }
 
       try {
-        const response = await fetch("http://localhost:3001/api/get-token", {
+        const response = await fetch(`${baseUrl}/api/get-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roomCode })
@@ -485,7 +489,7 @@ export default function Player() {
     const fetchGuestNames = async () => {
       try {
         const roomCode = localStorage.getItem("roomCode");
-        const response = await fetch("http://localhost:3001/api/get-guest-names", {
+        const response = await fetch(`${baseUrl}/api/get-guest-names`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roomCode })
@@ -508,7 +512,7 @@ export default function Player() {
       const roomCode = localStorage.getItem("roomCode");
       // delete whole document associated with hostId from DB
       if (hostId) {
-        await fetch("http://localhost:3001/api/remove-session-and-token", {
+        await fetch(`${baseUrl}/api/remove-session-and-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ hostId })
@@ -517,7 +521,7 @@ export default function Player() {
      
       if (guestId) {
         // if guest logging out
-        await fetch("http://localhost:3001/api/remove-guest", {
+        await fetch(`${baseUrl}/api/remove-guest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ roomCode, guestId })

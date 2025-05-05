@@ -2,7 +2,7 @@ import axios from "axios"; //server client for making api calls
 
 const authEndpoint = "https://accounts.spotify.com/authorize?";
 const clientId = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
-const redirectUri = "http://localhost:3000/login";
+const redirectUri = "http://localhost:3000/login"; // ***** change route once frontend hosted and we have an URL
 const scopes = [
     "user-library-read",
     "user-read-email",
