@@ -567,6 +567,7 @@ export default function Player() {
           {/* voting screen */}
           <div className="bottom-panels">
             <div className="left-panel">
+
               {/*voting error messages*/}
               <div className="vote-msg-wrapper">
                 {error && (
@@ -576,34 +577,46 @@ export default function Player() {
                 )}
               </div>
 
+              {/* Top Songs Display */}
               <div className="top-songs">
-                <h3>Top 5 Songs</h3>
+                <h3>Top Songs</h3>
+                
                 {topFiveSongs.length === 0 ? (
-                  <p>No songs in queue yet.</p>
+                  <div className="empty-queue">
+                    <p>No songs in queue yet. Be the first to add one!</p>
+                  </div>
                 ) : (
-                  <ol className="top-five-list">
+                  <ol className="song-grid">
                     {topFiveSongs.map((song, index) => (
-                      <li key={song.songId} className={index === 0 ? "winner" : ""}>
-                        <div className="song-entry">
+                      <li 
+                        key={song.songId} 
+                        className={`song-card ${index === 0 ? "winner" : ""}`}
+                        onClick={() => voteForSong(song.songId, song.name, song.votes)}
+                      >
+                        {index === 0 && <div className="winner-badge">🏆</div>}
+                        
+                        <div className="album-cover-container">
+                          {index < 5 && <div className="rank-indicator">{index + 1}</div>}
                           {song.image && (
                             <img
-                            src={song.image}
-                            alt={song.name}
-                            className="album-thumbnail"
-                            onClick={() => voteForSong(song.songId, song.name, song.votes)}
-                            style={{ cursor: "pointer" }}
+                              src={song.image}
+                              alt={song.name}
+                              className="voting-album-cover"
                             />
                           )}
-                          <p>
-                            <strong>{index === 0 ? "🎉 " : ""}{song.name || "Untitled"}</strong>
-                            {" — "}{song.votes} vote{song.votes !== 1 && "s"}
-                          </p>
+                        </div>
+                        
+                        <div className="song-info">
+                          <h4 className="song-name">{song.name || "Untitled"}</h4>
+                          <div className="vote-count">{song.votes}</div>
+                          <div className="vote-label">vote{song.votes !== 1 && "s"}</div>
                         </div>
                       </li>
                     ))}
                   </ol>
                 )}
-              </div> {/* top 5 songs */}
+              </div> {/* End top songs */}
+
             </div>
 
             {/* session code, guest names, search/queue songs, queueing messages */}

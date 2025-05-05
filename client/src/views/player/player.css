@@ -1,3 +1,7 @@
+/* Import Google Fonts - Montserrat for headings and Inter for body text */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* universal font is a big NONO */
 body {
     margin: 0;
     padding: 0;
@@ -199,19 +203,168 @@ body {
   }
   
   /* Responsive: stack left and right panels on small screen */
+  /* Remove the media query restriction for rank indicators */
   @media (max-width: 768px) {
     .bottom-panels {
       flex-direction: column;
+    }
+    .rank-indicator {
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
     }
   }
   
 
   /* ---------- VOTING SCREEN ---------- */
   .top-songs {
-    margin-top: 1.5rem;
-    margin-bottom: 50px;
+    margin-top: 2.5rem;
+    margin-bottom: 3rem;
+    position: relative;
+  }
+  .top-songs h3 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: #191414;
+    letter-spacing: -0.5px;
+    position: relative;
+    display: inline-block;
+  }
+  .top-songs h3:after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background: #1db954; /* Spotify green */
+    border-radius: 2px;
+  }
+  /* Song grid layout instead of list */
+  .song-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 24px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  /* Song cards */
+  .song-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    padding-bottom: 20px;
+  }
+
+  .song-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  /* Winner styling */
+  .song-card.winner {
+    box-shadow: 0 10px 20px rgba(29, 185, 84, 0.25);
+    border: 2px solid #1db954;
+  }
+  .winner-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #1db954;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+  }
+
+  /* Album cover styling */
+  .album-cover-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* 1:1 aspect ratio */
+    overflow: hidden;
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
+  .voting-album-cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .song-card:hover .album-cover {
+    transform: scale(1.05);
+  }
+  /* Song info */
+  .song-info {
+    padding: 0 15px;
+    text-align: center;
+  }
+
+  .song-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0 0 5px 0;
+    color: #191414;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Vote count */
+  .vote-count {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #191414;
+    margin: 10px 0 0 0;
+  }
+  .vote-label {
+    font-size: 0.75rem;
+    color: #777;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  /* Empty state styling */
+  .empty-queue {
+    text-align: center;
+    padding: 2rem;
+    background: #f9f9f9;
+    border-radius: 12px;
+    color: #666;
+    font-style: italic;
   }
   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   .top-five-list {
     padding-left: 1.2rem;
   }
@@ -240,24 +393,29 @@ body {
 
   /* queue message */
  /* Wrapper still holds space */
-.queue-msg-wrapper {
+ .queue-msg-wrapper {
   min-height: 48px;
   width: 100%;
+  position: relative;
+  margin-bottom: 15px;
 }
 
 /* Base style */
 .queue-msg {
   width: 100%;
   padding: 12px 20px;
-  border-radius: 6px;
+  border-radius: 10px;
   font-weight: 500;
   font-size: 0.95rem;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
   text-align: center;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.3s ease, transform 0.3s ease;
   box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 /* When visible */
@@ -266,63 +424,78 @@ body {
   transform: translateY(0);
 }
 
-/* Error message (light red) */
 .queue-msg.error {
-  background-color: #ffecec;
-  color: #a94442;
-  border-left: 4px solid #f44336;
+  background-color: #fff1f0;
+  color: #cf1322;
+  border-left: 4px solid #ff4d4f;
 }
 
-/* Success message (Spotify green) */
 .queue-msg.success {
-  background-color: #eafaf1;
+  background-color: #f6ffed;
   color: #1db954;
   border-left: 4px solid #1db954;
 }
 
-/* Voting error messages */
-/* Wrapper to preserve space even if message is hidden */
-.vote-msg-wrapper {
-  min-height: 48px;
-  width: 100%;
-}
 
-/* Shared base style */
-.vote-msg {
-  width: 100%;
-  padding: 12px 20px;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 0.95rem;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-  text-align: center;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  box-sizing: border-box;
-}
+
+
+  /* -----VOTING MESSAGES ----- */
+  /* Wrapper to preserve space even if message is hidden */
+  .vote-msg-wrapper {
+    min-height: 48px;
+    width: 100%;
+    position: relative;
+    margin-bottom: 15px;
+  }
+  .vote-msg {
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    box-sizing: border-box;
+    position: absolute;  /* This ensures it doesn't push content */
+    top: 0;
+    left: 0;
+  }
+  .vote-msg.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .vote-msg.error {
+  background-color: #fff1f0;
+  color: #cf1322;
+  border-left: 4px solid #ff4d4f;
+  }
+  .vote-msg.success {
+    background-color: #f6ffed;
+    color: #1db954;
+    border-left: 4px solid #1db954;
+  }
 
 /* Show when active */
 .vote-msg.visible {
   opacity: 1;
   transform: translateY(0);
 }
-
-/* Red error */
-.vote-msg.error {
-  background-color: #ffecec;
-  color: #a94442;
-  border-left: 4px solid #f44336;
+/* Fix for rank indicator - make it available at all screen sizes */
+.rank-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  z-index: 1;
 }
-
-/* Green success (Spotify vibe) */
-.vote-msg.success {
-  background-color: #eafaf1;
-  color: #1db954;
-  border-left: 4px solid #1db954;
-}
-
-  
-
-  
-  
