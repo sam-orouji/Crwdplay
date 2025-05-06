@@ -11,19 +11,21 @@ import ReactGA from "react-ga4"; // google analytics
 
 
 // ----- google analytics -----
-export function usePageTracking() {
+function PageTracker() {
   const location = useLocation();
 
   useEffect(() => {
     ReactGA.send({ hitType: "pageview", page: location.pathname });
   }, [location]);
+
+  return null; // nothing rendered
 }
 
 function App() {
   return (
     <Router>
       <Routes>
-        {usePageTracking()} {/*google analytics*/}
+        <PageTracker /> {/*google analytics*/}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/player/:roomCode" element={<Player />} />
