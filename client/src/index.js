@@ -4,8 +4,11 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { disableReactDevTools} from '@fvilers/disable-react-devtools';
+import ReactGA from "react-ga4";
 
 if (process.env.NODE_ENV === 'production') disableReactDevTools() //disables react dev tools when we deploy 
+ReactGA.initialize("G-B802PGEZWF"); // Google analytics
+ReactGA.send("pageview"); // logs the homepage visit
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
