@@ -20,11 +20,10 @@ export function usePageTracking() {
 }
 
 function App() {
-  usePageTracking(); // google analytics page changing
-
   return (
     <Router>
       <Routes>
+        {usePageTracking()} {/*google analytics*/}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/player/:roomCode" element={<Player />} />
