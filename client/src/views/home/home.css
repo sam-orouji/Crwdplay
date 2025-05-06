@@ -146,36 +146,36 @@
 
   /* ----- Feedback secion ----- */
   .feedback-section {
-    background-color: #ffeaa7;
+    background-color: #1db9541a; /* subtle green tint background */
     padding: 4rem 2rem;
     text-align: center;
-    border-top: 2px dashed #e17055;
   }
   
   .home-feedback-text {
     font-size: 1.2rem;
-    color: #444;
+    color: #191414;
     max-width: 600px;
     margin: 1rem auto 2rem;
     font-weight: 500;
   }
   
   .home-feedback-button {
-    background-color: #e17055;
-    color: white;
+    background-color: #1db954;
+    color: #ffffff;
     padding: 1rem 2.5rem;
     font-size: 1.1rem;
     font-weight: 700;
     border-radius: 12px;
     text-decoration: none;
     text-transform: uppercase;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: transform 0.2s ease, background 0.3s ease;
   }
   
   .home-feedback-button:hover {
-    background-color: #d35400;
+    background-color: #17a44b;
     transform: scale(1.05);
   }
+  
   
   
