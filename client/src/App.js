@@ -24,8 +24,8 @@ function PageTracker() {
 function App() {
   return (
     <Router>
+      <PageTracker /> {/*google analytics*/}
       <Routes>
-        <PageTracker /> {/*google analytics*/}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/player/:roomCode" element={<Player />} />
