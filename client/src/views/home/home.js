@@ -64,6 +64,22 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="home-section feedback-section">
+        <h2 className="home-section-title">We Need Your Feedback 💬</h2>
+        <p className="home-feedback-text">
+          Help us make Crowdplay better! Found a bug? Got a feature idea? Click below to tell us — it only takes a minute.
+        </p>
+        <a
+          href="https://forms.gle/krF7ed4i2kzm7h9cA"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="home-feedback-button"
+        >
+          Give Feedback 🚀
+        </a>
+      </section>
+
+
       <footer className="home-footer">
         &copy; 2025 Crowdplay. Bringing the crowd to life.
       </footer>
