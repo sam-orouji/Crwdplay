@@ -7,10 +7,24 @@
 [text](url)	link
 ![alt](image.png)	image
  -->
-# Crowdplay is the most Ferda pregaming project
-- 🎵 Spotify integration
-- 🔁 Real-time sessions
-- democratic
+🎵 Crowdplay
+Crowdplay is a real-time group listening app powered by Spotify. One host logs in with their Spotify Premium account and friends can join instantly to vote on what plays next.
+
+🚀 Features
+🎧 Spotify-powered music playback
+
+🗳️ Live democratic queue control
+
+⚡ Instant setup — no downloads
+
+🌐 100% browser-based
+
+✅ How It Works
+Host logs in and starts a session
+
+Guests join using a session code
+
+Everyone votes — the crowd decides what plays
 
 ## Tech Stack
 MERN
